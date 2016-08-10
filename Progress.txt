@@ -1,0 +1,12 @@
+wxString msg;
+   msg.Printf(_("Enabling effects:\n\n%s"), last3.c_str());
+
+   
+// Make sure the progress dialog is deleted before we call EndModal() or
+  
+ // we will leave the project window in an unusable state on OSX.
+   // See bug #1192.
+
+ProgressDialog *progress = new ProgressDialog(GetTitle(), msg, pdlgHideStopButton);
+   
+progress->CenterOnParent();

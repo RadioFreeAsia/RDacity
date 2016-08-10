@@ -1,0 +1,111 @@
+Compiling RDacity
+
+This is an overview of compiling the Audacity For Rivendell software in Windows Visual Studio.   
+I suggest creating a directory to put the external libraries,
+I called mine Projects. You will need three subdirectories, 1 for each library.
+
+  1)  Download mysql library.  I used mysql_4.1.21-win32.
+
+  2)  Download and compile LibCurl.
+
+  3)  Download and compile Rivendel-C-API library.
+ 
+  (Take note of where all of these libraries are built)
+
+  4)  Following the instructions in Compile_audacity - build WxWidgets, and
+      do the environment things and configurations listed there. Dont attempt
+      to build Audacity yet...
+  5)  Click the rdacity Visual Studio Solution.  You should not need to
+      add any of the source steps below since I already added them, but just
+      in case you need to add the new sources to the Project. Do this with the     
+	following steps:
+
+      a) In Solution Explorer - choose the src directory.
+      b) Right Click src -  Add Existing Item
+      c) Browse to the RDacity directory/src. Choose the following files
+         to add (you can ctrl-click to add them at once):
+            	MyProgressThread.h
+		MyProgressThread.cpp
+		RivendellBrowseDialog.h
+		RivendellBrowseDialog.cpp
+		RivendellDialog.h
+		RivendellDialog.cpp
+		RivendellConfig.h
+		RivendellConfig.cpp
+
+  6)  Add the Include Directories - you probably will have to change the ones I
+	   entered to match where your directories are located:
+	a) Click Project
+	b) Click Audacity Properties
+	c) Click Configuration Properties
+	d) Click C/C++  General
+	e) Click Additional Include Directories
+	f) Click the drop down to display entries.
+	g) Click Edit and enter direcotorys for riv-c-api and mysql includes. Mine were:
+              c:\mysql-4.1.21-win32\include
+              c:\Project\riv-c-api\riv-c-api
+	h) Click Ok.
+  7)  Add The Library Directories - you probably will have to change the ones I
+      entered to match where your directories are located:
+  	a) Click Project
+	b) Click Audacity Properties
+	c) Click Configuration Properties
+        d) Click Linker General
+	e) Click Additional Library Directories
+	f) Click the drop down to display entries.
+	g) Click Edit and enter library directories for riv-c-api, curl and mysql.
+           Mine were:
+     	c:\Project\curl-7.46.0\builds\libcurl-vc12-x86-release-dll-ipv6-sspi-winssl\lib
+	c:\Project\riv-c-api\riv-c-api\Release
+	c:\mysql-4.1.21-win32\lib\opt
+
+  8)  The RivendellDialog.cpp file in the src directory needs to be edited
+      to handle the host station information. (line 635 approximately).
+      We hard-coded to be "xxxhost" - which is the station name in
+      the Mysql DB Table RDLIBRARY to use to get Default Sample Rate,
+      Default Format, and Default Channels.  You will need to change this
+      to a Station in YOUR RDLIBRARY table. It is also set in the rd.ini file
+      and the code can use that value - by default (that code is commented out.
+      This code tries to be OS Compatible, so take a hard look at this.
+      
+  9)  The export process we wrote is hard coded to 16Bit PCM.  See 
+      src/Export/export.cpp for specific method details. 
+
+  10) Click Build to build the software.
+      Select the configuration that you wish to build:
+      * "Release" for Unicode-based, general use 
+      * "Debug" for a Unicode-based, slower, debuggable 
+         executable
+
+      You can select the configuration from the Solution 
+      Configurations pull-down menu, or select it from the "Build" 
+      menu > "Configuration Manager..." dialog box.
+
+      Build Audacity by giving the "Build" menu > "Rebuild Solution" 
+      command.
+
+  11) Once you have a clean Build - which I am sure you will ;)...
+      you will need to make sure of a couple of other things before it will run.
+   	a)  The Executable Directory (i.e. Debug or Release) needs to have a Portable Settings Directory.
+            An example of the Release directory is included - but you will need to edit
+            the rd.ini file and put the specific values for your machine/Database to run it
+            from there. The executable directory were it is running from is where it
+            will look for that Directory/file. If it cannot find rd.ini it Aborts.
+	b)  The Library dll files and wxWidgets files MUST be in the executable direcotory
+	    or the software will Abort (and will tell you it can't find things).  
+            The files that need to be there are: the libmysql.dll, libcurl.dll,
+	    msvcp120.dll, msvcr120.dll, and all the wxWidgets .dlls that were compiled
+            when you build wxWidgets.  See the compile_audacity document for details.
+
+  12) Our code makes some assumptions that you "May" want to change.  We do not allow users
+      to create EVERGREEN carts in RDacity. We also enforce a start and end date on ALL
+      CARTS/CUTS inserted/updated by the system. We also enforce specific rules in fields
+      like Title (and other fields as well) to ensure that data integrity is consistent.  
+      One example is: NO Title Column is allowed to start with a space.  Feel free to change
+      any of these things as you see fit. 
+
+  13) There is a ISS (InnoSetup) file provided - which can be used to create self-extracting exe's.
+      It is configured to create a directory in the appropriate Program Files directory named
+      rdacity.
+
+Enjoy
