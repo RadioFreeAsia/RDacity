@@ -92,7 +92,7 @@ bool	RivendellConfig::LoadConfig(char *_FileName)
 	else
 	{
 		// No Longer using hard coded rd.ini use exe path!
-		wxMessageBox(_("Unable to find Portable Setting Directory\n Please contact HelpDesk"),
+		wxMessageBox(_("Unable to find Portable Settings Directory !"),
 			_("Rivendell Configuration"), wxICON_ERROR | wxOK);
 		return false;
 		// f = fopen(_FileName, "r");
@@ -100,7 +100,7 @@ bool	RivendellConfig::LoadConfig(char *_FileName)
 	
 	if (!f)
 	{
-		wxMessageBox(_("Unable to find rivendell configuration \nrivendell.ini not in directory\n Please contact HelpDesk"),
+		wxMessageBox(_("Unable to find rivendell configuration \n./Portable Settings/rd.ini not in executable directory!"),
 			_("Rivendell Configuration"), wxICON_ERROR | wxOK);
 		return false;
 	}
@@ -111,7 +111,7 @@ bool	RivendellConfig::LoadConfig(char *_FileName)
 	portablePrefsPath.Assign(holdFilePath);
 	if (!wxFileExists(portablePrefsPath.GetFullPath()))
 	{
-		 wxMessageBox(_("Unable to verify configuration - missing audacity.cfg\n Please contact HelpDesk"),
+		 wxMessageBox(_("Unable to verify configuration - missing audacity.cfg"),
 		           _("Rivendell Configuration"), wxICON_ERROR|wxOK);
          return false;
 	}
@@ -251,9 +251,7 @@ wxString	riv_getuser(MYSQL *db)
    wxString query;
    MYSQL_RES *result;
 
-   // testing toady 3
-   //return username;
-#ifdef _WIN32
+   #ifdef _WIN32
    TCHAR tusername[255];
    DWORD tusername_bufsize = 255;
    bool rc;
