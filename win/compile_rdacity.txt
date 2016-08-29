@@ -104,8 +104,9 @@ I called mine Projects. You will need three subdirectories, 1 for each library.
       One example is: NO Title Column is allowed to start with a space.  Feel free to change
       any of these things as you see fit. 
 
-  13) There is a ISS (InnoSetup) file provided - which can be used to create self-extracting exe's.
-      It is configured to create a directory in the appropriate Program Files directory named
-      rdacity.
+  13) The Initialization Procedures check for the existence of a Rivendell Ini file
+     (named rd.ini), and it should exist in the Portable Settings Directory off the 
+     executable directory path.  There is an example of this file under the 
+     win/Release/Portable Settings directory.  If it cannot find it (rd.ini) if will Abort.
 
 Enjoy
