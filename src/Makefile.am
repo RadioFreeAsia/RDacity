@@ -8,8 +8,13 @@ dist_mime_DATA = audacity.xml
 
 check_LTLIBRARIES = libaudacity.la
 
-libaudacity_la_CPPFLAGS = $(WX_CXXFLAGS)
+libaudacity_la_CPPFLAGS = $(WX_CXXFLAGS) 
+libaudacity_la_CPPFLAGS += $(MYSQL_CONFIG_CPPFLAGS)
+libaudacity_la_CPPFLAGS += $(RIVCWEBAPI_CFLAGS)
+
 libaudacity_la_LIBADD = $(WX_LIBS)
+libaudacity_la_LIBADD += $(MYSQL_CONFIG_LIBS)
+libaudacity_la_LIBADD += $(RIVCWEBAPI_LIBS))
 
 libaudacity_la_SOURCES = \
 	BlockFile.cpp \
@@ -58,6 +63,8 @@ audacity_CPPFLAGS = \
 	$(SOXR_CFLAGS) \
 	$(WIDGETEXTRA_CFLAGS) \
 	$(WX_CXXFLAGS) \
+	$(MYSQL_CONFIG_CPPFLAGS) \
+	$(RIVCWEBAPI_CFLAGS) \
 	$(NULL)
 
 # Until we upgrade to a newer version of wxWidgets...will get rid of hundreds of these:
@@ -88,6 +95,9 @@ audacity_LDADD = \
 	$(SOXR_LIBS) \
 	$(WIDGETEXTRA_LIBS) \
 	$(WX_LIBS) \
+        $(MYSQL_CONFIG_LIBS) \
+	$(RIVCWEBAPI_LIBS) \
+	$(LIBCURL_LIBS) \
 	$(NULL)
 
 audacity_SOURCES = \
@@ -190,6 +200,14 @@ audacity_SOURCES = \
 	Resample.cpp \
 	Resample.h \
 	RevisionIdent.h \
+	RivendellConfig.h \
+	RivendellConfig.cpp \
+	RivendellBrowseDialog.h \
+	RivendellBrowseDialog.cpp \
+	RivendellDialog.h \
+	RivendellDialog.cpp \
+	MyProgressThread.cpp \
+	MyProgressThread.h \
 	RingBuffer.cpp \
 	RingBuffer.h \
 	Screenshot.cpp \

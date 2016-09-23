@@ -135,6 +135,11 @@ dnl define BUILDING_AUDACITY during the audacity build, and not during the
 dnl plug-in build. This code puts the relevant content into configunix.h
 AC_DEFINE(BUILDING_AUDACITY, 1,
    [Define we are compiling Audacity itself, not an Audacity plug-in])
+### Build With Rivendell
+##########################
+dnl Try To Add Rivendell
+AC_DEFINE(USE_LIBRIVENDELL, 1,
+   [Define We Are Compiling With Rivendell])
 # Add -rdynamic to linker flags so the right symbols are exported for
 # plug-ins. This might not work on all architectures / compilers, so we need
 # to check if it does or not.
@@ -146,6 +151,7 @@ else
    AC_MSG_WARN(["Linker does not support -rdynamic. Could not enable exporting all symbols"])
    AC_MSG_WARN(["Audacity module support will probably not work"])
 fi
+
 
 ### Build Options ###
 #####################
@@ -235,6 +241,12 @@ dnl check if alloca.h exists. If it does, we need to include it for
 dnl Solaris builds, by defining HAVE_ALLOCA_H
 AC_CHECK_HEADERS_ONCE(alloca.h)
 
+#
+# Check for mysql
+#
+#toady   added this  but it has to be in env to find it.
+#AC_CHECK_HEADER(mysql.h,[],[AC_MSG_ERROR([*** Mysql Header Not Found ***])])
+
 
 dnl --------------------------------------------------------------------------
 dnl We would like warnings enabled on the builds, but different compilers need
@@ -317,13 +329,41 @@ AC_SUBST([WX_CXXFLAGS])
 AC_SUBST([WX_LIBS])
 
 dnl-----------------------------------------------------------------
+dnl Look for Mysql Libraries and Configs
+AC_CHECK_PROG( [MYSQL_CONFIG], mysql_config, mysql_config)
+  if test "x${MYSQL_CONFIG}" != x"mysql_config"; then
+    AC_MSG_ERROR([The mysql library and header files are   ])
+    AC_MSG_ERROR([Required to build RDacity project        ])
+  else
+    MYSQL_CONFIG_CFLAGS=`$MYSQL_CONFIG --cflags`
+    MYSQL_CONFIG_CPPFLAGS=`$MYSQL_CONFIG --include`
+    MYSQL_CONFIG_LIBS=`$MYSQL_CONFIG --libs`
+    AC_SUBST([MYSQL_CONFIG_CFLAGS])
+    AC_SUBST([MYSQL_CONFIG_CPPFLAGS])
+    AC_SUBST([MYSQL_CONFIG_LIBS])
+  fi
+
+#
+# Check for LibCurl
+#
+AC_CHECK_HEADER(curl/curl.h,[],[AC_MSG_ERROR([*** LibCurl not found ***])])
+
+#
+# check for Rivendell Riv C API Lib
+PKG_CHECK_MODULES(RIVCWEBAPI, rivendell >= 0.0.1)
+
+#
+# check for CURL Lib
+PKG_CHECK_MODULES(LIBCURL, libcurl >= 0.0.1)
+
+dnl-----------------------------------------------------------------
 dnl Pull in library Cflags and so on for the non-optional libraries
 
 dnl All libraries in lib-src should build static libraries, but not shared ones.
 ac_configure_args="$ac_configure_args --enable-static=yes --enable-shared=no"
 
 dnl Include "external" headers
-CXXFLAGS="$CXXFLAGS -I\$(top_srcdir)/include"
+CXXFLAGS="$CXXFLAGS -I\$(top_srcdir)/include $MYSQL_CONFIG_CPPFLAGS"
 
 dnl Include FileDialog
 AC_CONFIG_SUBDIRS([lib-src/FileDialog lib-src/mod-nyq-bench])
