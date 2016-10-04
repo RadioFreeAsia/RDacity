@@ -3647,8 +3647,9 @@ void AudacityProject::OnBrowseRivendellLibrary()
    if (dlog.ShowModal() == wxID_OK) {
       // Cut import handling.
       selection = dlog.GetSelection(RD_BROWSE_CUT_NAME);
-      sscanf(selection.mb_str(), "%d_%d", &cartId, &cutId);
+      sscanf(selection.mb_str(), "%d_%03d", &cartId, &cutId);
       hold_selection.Printf(_T("%s.wav"),selection.c_str());
+
 	  RivendellCfg->ParseString("Cae", "AudioRoot", soundsDir);
 	  filename.Printf(_T("%s%s%s.wav"),
 		  wxString(soundsDir, wxConvLocal).c_str(),
@@ -3711,12 +3712,12 @@ void AudacityProject::OnBrowseRivendellLibrary()
 				  break;
 			  case  403:
 				  fprintf(stderr, "Warning:  No Source Audio Found! \n");
-				  wxMessageBox(wxString::Format(_("Warning - No Source Audio Found! \n     Cart Number: %d_03d"),
+				  wxMessageBox(wxString::Format(_("Warning - No Source Audio Found! \n     Cart Number: %d_%03d"),
 					  cartId,cutId ), _("Rivendell Web API"), wxICON_WARNING | wxOK);
 				  break;
 			  default:
-				  fprintf(stderr, "Unknown Server Error - Contact Help Desk !");
-				  wxMessageBox(_("Error - Unknown Web Service Error - Contact Help Desk!"),
+				  fprintf(stderr, "Unknown Server Error !");
+				  wxMessageBox(_("Error - Unknown Web Service Error !"),
 					  _("Rivendell Web API"), wxICON_ERROR | wxOK);
 			  }
 			  return;
@@ -3743,7 +3744,7 @@ void AudacityProject::OnBrowseRivendellLibrary()
 			if (!::wxFileExists(filename)) 
 			{
 				mysql_close(&m);
-				wxMessageBox(_("Please Contact Help Desk! \n Could Not open file:  ") + filename );
+				wxMessageBox(_(" Could Not open file:  ") + filename );
 				return;
 			}
 			p = GetActiveProject();

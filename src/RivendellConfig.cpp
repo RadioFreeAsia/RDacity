@@ -30,7 +30,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
 #include <windows.h>
+#endif
+
 #include <wx/filename.h>
 #include <wx/msgdlg.h>
 #include "PlatformCompatibility.h"
@@ -67,9 +71,10 @@ bool	RivendellConfig::LoadConfig(char *_FileName)
 {
     //  We will attempt to get the exe path so we can find
     //  The Portable Settings directory relative to that.
-	//  This used to be hard coded so if all else fails
-	//  will use the hard coded path for source of rd.ini file.
-	
+    //  This used to be hard coded so if all else fails
+    //  will use the hard coded path for source of rd.ini file.
+    // This is Windows only - Linux uses /etc/rdacity/rd.ini
+    //
 	wxFileName exePath(PlatformCompatibility::GetExecutablePath());
 	wxString   holdFilePath;
     #if defined(__WXMAC__)
@@ -81,9 +86,23 @@ bool	RivendellConfig::LoadConfig(char *_FileName)
     wxFileName portablePrefsPath(exePath.GetPath(), wxT("Portable Settings"));
 	
 	FILE *f;
-	
+    #if !defined(__WXMSW__)
+    //    Linux or Mac uses /etc/rdacity/rd.ini 
+    //
+        f = fopen(_FileName, "r");
+        
+        if (!f)
+        {
+           wxMessageBox(_("Unable to find rivendell configuration File\n rd.ini not in /etc/rdacity directory!"),
+                        _("Rivendell Configuration"), wxICON_ERROR | wxOK);
+                return false;
+        }
+
+    #else
+    //   Windows uses executable directory / Portable Settings/rd.ini
+    //
 	if (wxDirExists(portablePrefsPath.GetFullPath()))
-    {
+        {
         // Use "Portable Settings" folder
         holdFilePath = portablePrefsPath.GetFullPath();
 		holdFilePath += _("\\rd.ini");
@@ -95,34 +114,22 @@ bool	RivendellConfig::LoadConfig(char *_FileName)
 		wxMessageBox(_("Unable to find Portable Settings Directory !"),
 			_("Rivendell Configuration"), wxICON_ERROR | wxOK);
 		return false;
-		// f = fopen(_FileName, "r");
 	}
-	
 	if (!f)
 	{
 		wxMessageBox(_("Unable to find rivendell configuration \n./Portable Settings/rd.ini not in executable directory!"),
 			_("Rivendell Configuration"), wxICON_ERROR | wxOK);
 		return false;
 	}
+    #endif
 
-	//  Checking for existence of audacity config otherwise fail
-    holdFilePath = portablePrefsPath.GetFullPath();
-    holdFilePath += _("\\audacity.cfg");
-	portablePrefsPath.Assign(holdFilePath);
-	if (!wxFileExists(portablePrefsPath.GetFullPath()))
-	{
-		 wxMessageBox(_("Unable to verify configuration - missing audacity.cfg"),
-		           _("Rivendell Configuration"), wxICON_ERROR|wxOK);
-         return false;
-	}
-
-	fseek(f, 0, SEEK_END);
-	m_Size = ftell(f);
-	m_Data = (char*)malloc(m_Size);
-	fseek(f, 0, SEEK_SET);
-	fread(m_Data, m_Size, 1, f);
-	fclose(f);	
-	return true;
+    fseek(f, 0, SEEK_END);
+    m_Size = ftell(f);
+    m_Data = (char*)malloc(m_Size);
+    fseek(f, 0, SEEK_SET);
+    fread(m_Data, m_Size, 1, f);
+    fclose(f);	
+    return true;
 }
 
 char*	RivendellConfig::FindSection(const char *_Section)
@@ -242,8 +249,8 @@ int		RivendellConfig::GetCutOpened(void)
 
 wxString	riv_getuser(MYSQL *db)
 {
-   //const wxString default_username = _T("user"); // Initialize to default Rivendell userid "user", in case unable to get credentials.
-   const wxString default_username = _T("guest"); 
+   const wxString default_username = _T("user"); // Initialize to default Rivendell userid "user", in case unable to get credentials.
+   //const wxString default_username = _T("guest"); 
 	  // Initialize to Rivendell userid "guest", in case unable to get credentials. If there is no such user in 
       // the Rivendell database, no files will be returned on browse; while an error dialog is presented on export
    //const wxString default_username = _T("user");   //Rivendell 2.0 testing toady
