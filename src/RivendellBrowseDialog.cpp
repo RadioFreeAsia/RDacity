@@ -314,7 +314,7 @@ bool RivendellBrowseDialog::ClearRivendellData()
 {
    //Check for mysql connection
    if (mysql_ping(mDb)) {
-      wxMessageBox(_("Connection lost, please try again.\n If this persists contact Helpdesk"),
+      wxMessageBox(_("Connection lost, please try again.\n If this persists check Data Base Settings!"),
 		           _("Rivendell mySQL"), wxICON_ERROR|wxOK);
       return false;
    }

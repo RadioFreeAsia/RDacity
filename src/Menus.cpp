@@ -3726,7 +3726,7 @@ void AudacityProject::OnBrowseRivendellLibrary()
 		  if (!::wxFileExists(filename))
 		  {
 			  mysql_close(&m);
-			  wxMessageBox(_("Please Contact Help Desk! \n Could Not open file:  ") + filename);
+			  wxMessageBox(_("Aborting File Import - Could Not open file:  ") + filename);
 			  return;
 		  }
 		  p = GetActiveProject();
@@ -3789,7 +3789,7 @@ void AudacityProject::OnExportRivendellMix()
    status= mysql_query(&m,query.mb_str());
    if (status != 0) 
    {
-	   wxMessageBox(_("Unable to query database For Current Date \n Please contact Help Desk or Try Again!\n"),
+	   wxMessageBox(_("Unable to query database For Current Date \n Please check DB Connection or Try Again!\n"),
 		           _("Rivendell mySQL"), wxICON_ERROR||wxID_CANCEL);
 	   return ;
    }
@@ -3822,7 +3822,7 @@ void AudacityProject::OnExportRivendellSelection()
    status= mysql_query(&m,query.mb_str());
    if (status != 0) 
    {
-	   wxMessageBox(_("Unable to query database For Current Date \n Please contact Help Desk or Try Again!\n"),
+	   wxMessageBox(_("Unable to query database For Current Date \n Please check DB Connection or Try Again!\n"),
 		           _("Rivendell mySQL"), wxICON_ERROR||wxID_CANCEL);
 	   return ;
    }

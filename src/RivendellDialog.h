@@ -31,8 +31,7 @@
 #define RIVENDELLDIALOGH
 
 #include <wx/dialog.h>
-#include <mysql.h>
-//#include <mysql/mysql.h>
+#include <mysql/mysql.h>
 #include "Track.h"
 
 #define wxID_LENGTH                     1000
@@ -48,15 +47,13 @@
 #define wxID_AGENCY                     1010
 #define wxID_DESCRIPTION                1011
 #define wxID_CARTNUMBER                 1012
-/*
-#define wxID_CUTNUMBER                       1013
-*/
+#define wxID_CUTNUMBER                  1013
 #define wxID_GROUP                      1014
 #define wxID_BROWSE                     1015
 // definitions for radiobox control
-#define DATEENABLED_ON			        0
-#define DATEENABLED_OFF					1
-#define wxID_CLEAR						1017
+#define DATEENABLED_ON			0
+#define DATEENABLED_OFF			1
+#define wxID_CLEAR			1017
 #define wxID_EVERGREEN                  1018
 
 class wxTextCtrl;
@@ -79,10 +76,7 @@ public:
     void OnClear(wxCommandEvent & event);
     void PopulateDialog(int cartId=-1, int cutId=-1);
     bool Chk_Ascii(const char * chk_string);
-	void Export_Failure(const char *title,
-		const char *cutname,
-		const unsigned long cartnumber,
-		const wxString msg);
+    void Export_Failure( const char *cutname, const wxString msg);
 
 private:   
     wxChoice        *mChoiceGroup;
