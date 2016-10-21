@@ -242,6 +242,7 @@ RivendellDialog::RivendellDialog(wxWindow * parent, MYSQL *db, bool saveSelectio
    }
 
    mysql_free_result(result);
+
     
    wxChoice *mChoiceGroup = new wxChoice( this, wxID_GROUP, wxDefaultPosition, wxSize(-1,-1), numRows, stringGroups, 0 );
    mChoiceGroup->SetSelection(0);    
@@ -255,7 +256,16 @@ RivendellDialog::RivendellDialog(wxWindow * parent, MYSQL *db, bool saveSelectio
    wxStaticText *cartnumText = new wxStaticText( this, -1, _("Cart Number:"), wxDefaultPosition, wxDefaultSize, 0 );
    cartnumBoxSizer->Add(cartnumText, 0, wxALIGN_CENTER|wxALL, 5 );
 
-   wxTextCtrl *mTxtCartNumber = new wxTextCtrl( this, wxID_CARTNUMBER, wxT(""), wxDefaultPosition, wxSize(80,-1), 0 );
+   // Build numeric validator
+   wxTextValidator validator(wxFILTER_INCLUDE_CHAR_LIST);
+   wxArrayString list;
+   wxString valid_chars(wxT("0123456789"));
+   size_t len = valid_chars.Length();
+   for (size_t i = 0; i<len; i++)
+   list.Add(wxString(valid_chars.GetChar(i)));
+   validator.SetIncludes(list);
+
+   wxTextCtrl *mTxtCartNumber = new wxTextCtrl( this, wxID_CARTNUMBER, wxT(""), wxDefaultPosition, wxSize(80,-1), 0 ,validator);
    cartnumBoxSizer->Add(mTxtCartNumber, 0, wxALIGN_CENTER|wxALL, 5 );
    cartgroupGridSizer->Add(cartnumBoxSizer, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
@@ -263,7 +273,7 @@ RivendellDialog::RivendellDialog(wxWindow * parent, MYSQL *db, bool saveSelectio
    wxStaticText *cutidText = new wxStaticText( this, -1, _("Cut Number:"), wxDefaultPosition, wxDefaultSize, 0 );
    cutidBoxSizer->Add(cutidText, 0, wxALIGN_CENTER|wxALL, 5 );
 
-   wxTextCtrl *mTxtCutId = new wxTextCtrl( this, wxID_CUTNUMBER, wxT(""), wxDefaultPosition, wxSize(60,-1), 0 );
+   wxTextCtrl *mTxtCutId = new wxTextCtrl( this, wxID_CUTNUMBER, wxT(""), wxDefaultPosition, wxSize(60,-1), 0 ,validator);
    cutidBoxSizer->Add(mTxtCutId, 0, wxALIGN_CENTER|wxALL, 5 );
    cartgroupGridSizer->Add(cutidBoxSizer, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
@@ -291,7 +301,7 @@ RivendellDialog::RivendellDialog(wxWindow * parent, MYSQL *db, bool saveSelectio
 	wxStaticText *yearText = new wxStaticText( this, -1, _("Year Released:"), wxDefaultPosition, wxDefaultSize, 0 );
    cartGridSizer->Add(yearText, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
-   wxTextCtrl *mTxtYear = new wxTextCtrl( this, wxID_YEAR, wxT(""), wxDefaultPosition, wxSize(40,-1), 0 );
+   wxTextCtrl *mTxtYear = new wxTextCtrl( this, wxID_YEAR, wxT(""), wxDefaultPosition, wxSize(40,-1), 0 ,validator);
    cartGridSizer->Add(mTxtYear, 0, wxALIGN_LEFT|wxALL, 5 );
 
    wxStaticText *albumText = new wxStaticText( this, -1, _("Album:"), wxDefaultPosition, wxDefaultSize, 0 );
