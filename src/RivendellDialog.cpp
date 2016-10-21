@@ -86,6 +86,7 @@ BEGIN_EVENT_TABLE(RivendellDialog, wxDialog)
    EVT_BUTTON(wxID_CLEAR, RivendellDialog::OnClear)
    EVT_CHOICE(wxID_GROUP, RivendellDialog::OnChoiceGroup)
    EVT_CHECKBOX(wxID_EVERGREEN, RivendellDialog::OnEvergreenChange)
+   EVT_TEXT(wxID_CARTNUMBER,RivendellDialog::OnCartNumberChange)
    END_EVENT_TABLE()
 
 IMPLEMENT_CLASS(RivendellDialog, wxDialog)
@@ -396,6 +397,15 @@ void RivendellDialog::OnClear(wxCommandEvent & event)
     ((wxTextCtrl*)FindWindow(wxID_LABEL))->Clear();
     ((wxTextCtrl*)FindWindow(wxID_CLIENT))->Clear();
     ((wxTextCtrl*)FindWindow(wxID_AGENCY))->Clear();
+}
+
+//  If Cart Number is edited - Cut Number must be blanked
+void RivendellDialog::OnCartNumberChange(wxCommandEvent & event)
+{
+    if (((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->IsModified())
+    {
+        ((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->Clear();
+    }
 }
 
 void RivendellDialog::OnEvergreenChange(wxCommandEvent & event)

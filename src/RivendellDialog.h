@@ -71,8 +71,9 @@ public:
     void OnBrowse(wxCommandEvent & event);
     void OnOK(wxCommandEvent & event);
     void OnChoiceGroup(wxCommandEvent & event);
-	void OnChange(wxCommandEvent & event);
-	void OnEvergreenChange(wxCommandEvent & event);
+    void OnChange(wxCommandEvent & event);
+    void OnCartNumberChange(wxCommandEvent & event);
+    void OnEvergreenChange(wxCommandEvent & event);
     void OnClear(wxCommandEvent & event);
     void PopulateDialog(int cartId=-1, int cutId=-1);
     bool Chk_Ascii(const char * chk_string);
