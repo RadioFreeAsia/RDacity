@@ -1,0 +1,40 @@
+This is a quick overview of compiling the Audacity For Rivendell software
+in a Linux environment.
+
+Each Linux environment is different - build the configuration steps attempts to ensure that 
+you have all the correct libraries before you can make the software.
+
+You will need all the development tools and libraries (autoconf, C compiler, etc...)
+that are generally needed to compile and build software. See your distribution's suggerstions
+and install those seperately.
+
+You will need to install several library packages:
+
+   1)  Mysql  (including the development library)
+   2)  LibCurl
+   3)  Expat
+
+
+After installing the above libraries you will need the rivendell-c-api library.  
+You can download that at github.com/RadioFreeAsia/rivendell-c-api.
+
+You need to configure and make that software.  
+You will need to make install as root the rivendell-c-api library as well.
+
+After that you will need to follow the direction for compiling Audacity (i.e. Build WXWIDGETS,
+set up LD Environment if applicable).
+
+I used the following commands when building RDacity the last time after downloading:
+
+  1)  autoreconf -i (from the RDacity directory).
+  2)  configure --without-lv2  (my lv2 project would not make for some reason).
+  3)  make
+
+
+
+If you run into problems finding the mysql libraries - check that you have mysql development
+libs installed.  If it doesn't find the rivendell-c-api check that it is installed.  Also
+the make sure that the environment variable  PKG_CONFIG_PATH is set to include /usr/local/lib/pkgconfig.
+That's where the rivendell configuration lives for the api and it wont find it otherwise.
+
+
