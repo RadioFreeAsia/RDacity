@@ -759,9 +759,17 @@ AVCODEC_LIBS
 AVCODEC_CFLAGS
 EXPAT_LIBS
 EXPAT_CFLAGS
-PKG_CONFIG
 FILEDIALOG_LIBS
 subdirs
+LIBCURL_LIBS
+LIBCURL_CFLAGS
+RIVCWEBAPI_LIBS
+RIVCWEBAPI_CFLAGS
+PKG_CONFIG
+MYSQL_CONFIG_LIBS
+MYSQL_CONFIG_CPPFLAGS
+MYSQL_CONFIG_CFLAGS
+MYSQL_CONFIG
 WX_LIBS
 WX_CXXFLAGS
 WX_CONFIG
@@ -978,6 +986,10 @@ CXXFLAGS
 CCC
 CXXCPP
 PKG_CONFIG
+RIVCWEBAPI_CFLAGS
+RIVCWEBAPI_LIBS
+LIBCURL_CFLAGS
+LIBCURL_LIBS
 EXPAT_CFLAGS
 EXPAT_LIBS
 AVCODEC_CFLAGS
@@ -1736,6 +1748,14 @@ Some influential environment variables:
   CXXFLAGS    C++ compiler flags
   CXXCPP      C++ preprocessor
   PKG_CONFIG  path to pkg-config utility
+  RIVCWEBAPI_CFLAGS
+              C compiler flags for RIVCWEBAPI, overriding pkg-config
+  RIVCWEBAPI_LIBS
+              linker flags for RIVCWEBAPI, overriding pkg-config
+  LIBCURL_CFLAGS
+              C compiler flags for LIBCURL, overriding pkg-config
+  LIBCURL_LIBS
+              linker flags for LIBCURL, overriding pkg-config
   EXPAT_CFLAGS
               C compiler flags for EXPAT, overriding pkg-config
   EXPAT_LIBS  linker flags for EXPAT, overriding pkg-config
@@ -2887,7 +2907,7 @@ ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
 
 
 
-am__api_version='1.15'
+am__api_version='1.13'
 
 # Find a good install program.  We prefer a C program (faster),
 # so one script is as good as another.  But avoid the broken or
@@ -3059,8 +3079,8 @@ test "$program_suffix" != NONE &&
 ac_script='s/[\\$]/&&/g;s/;s,x,x,$//'
 program_transform_name=`$as_echo "$program_transform_name" | sed "$ac_script"`
 
-# Expand $ac_aux_dir to an absolute path.
-am_aux_dir=`cd "$ac_aux_dir" && pwd`
+# expand $ac_aux_dir to an absolute path
+am_aux_dir=`cd $ac_aux_dir && pwd`
 
 if test x"${MISSING+set}" != xset; then
   case $am_aux_dir in
@@ -3079,7 +3099,7 @@ else
 $as_echo "$as_me: WARNING: 'missing' script is too old or missing" >&2;}
 fi
 
-if test x"${install_sh+set}" != xset; then
+if test x"${install_sh}" != xset; then
   case $am_aux_dir in
   *\ * | *\	*)
     install_sh="\${SHELL} '$am_aux_dir/install-sh'" ;;
@@ -3407,8 +3427,8 @@ MAKEINFO=${MAKEINFO-"${am_missing_run}makeinfo"}
 # <http://lists.gnu.org/archive/html/automake/2012-07/msg00014.html>
 mkdir_p='$(MKDIR_P)'
 
-# We need awk for the "check" target (and possibly the TAP driver).  The
-# system "awk" is bad on some platforms.
+# We need awk for the "check" target.  The system "awk" is bad on
+# some platforms.
 # Always define AMTAR for backward compatibility.  Yes, it's still used
 # in the wild :-(  We should find a proper way to deprecate it ...
 AMTAR='$${TAR-tar}'
@@ -3539,48 +3559,6 @@ $as_echo "$am_cv_prog_tar_ustar" >&6; }
 
 
 
-
-# POSIX will say in a future version that running "rm -f" with no argument
-# is OK; and we want to be able to make that assumption in our Makefile
-# recipes.  So use an aggressive probe to check that the usage we want is
-# actually supported "in the wild" to an acceptable degree.
-# See automake bug#10828.
-# To make any issue more visible, cause the running configure to be aborted
-# by default if the 'rm' program in use doesn't match our expectations; the
-# user can still override this though.
-if rm -f && rm -fr && rm -rf; then : OK; else
-  cat >&2 <<'END'
-Oops!
-
-Your 'rm' program seems unable to run without file operands specified
-on the command line, even when the '-f' option is present.  This is contrary
-to the behaviour of most rm programs out there, and not conforming with
-the upcoming POSIX standard: <http://austingroupbugs.net/view.php?id=542>
-
-Please tell bug-automake@gnu.org about your system, including the value
-of your $PATH and any error possibly output before this message.  This
-can help us improve future automake versions.
-
-END
-  if test x"$ACCEPT_INFERIOR_RM_PROGRAM" = x"yes"; then
-    echo 'Configuration will proceed anyway, since you have set the' >&2
-    echo 'ACCEPT_INFERIOR_RM_PROGRAM variable to "yes"' >&2
-    echo >&2
-  else
-    cat >&2 <<'END'
-Aborting the configuration process, to ensure you take notice of the issue.
-
-You can download and install GNU coreutils to get an 'rm' implementation
-that behaves properly: <http://www.gnu.org/software/coreutils/>.
-
-If you want to complete the configuration process using your problematic
-'rm' anyway, export the environment variable ACCEPT_INFERIOR_RM_PROGRAM
-to "yes", and re-run configure.
-
-END
-    as_fn_error $? "Your 'rm' program is bad, sorry." "$LINENO" 5
-  fi
-fi
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable maintainer-specific portions of Makefiles" >&5
@@ -4781,65 +4759,6 @@ ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $CC understands -c and -o together" >&5
-$as_echo_n "checking whether $CC understands -c and -o together... " >&6; }
-if ${am_cv_prog_cc_c_o+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main ()
-{
-
-  ;
-  return 0;
-}
-_ACEOF
-  # Make sure it works both with $CC and with simple cc.
-  # Following AC_PROG_CC_C_O, we do the test twice because some
-  # compilers refuse to overwrite an existing .o file with -o,
-  # though they will create one.
-  am_cv_prog_cc_c_o=yes
-  for am_i in 1 2; do
-    if { echo "$as_me:$LINENO: $CC -c conftest.$ac_ext -o conftest2.$ac_objext" >&5
-   ($CC -c conftest.$ac_ext -o conftest2.$ac_objext) >&5 2>&5
-   ac_status=$?
-   echo "$as_me:$LINENO: \$? = $ac_status" >&5
-   (exit $ac_status); } \
-         && test -f conftest2.$ac_objext; then
-      : OK
-    else
-      am_cv_prog_cc_c_o=no
-      break
-    fi
-  done
-  rm -f core conftest*
-  unset am_i
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $am_cv_prog_cc_c_o" >&5
-$as_echo "$am_cv_prog_cc_c_o" >&6; }
-if test "$am_cv_prog_cc_c_o" != yes; then
-   # Losing compiler, so override with the script.
-   # FIXME: It is wrong to rewrite CC.
-   # But if we don't then we get into trouble of one sort or another.
-   # A longer-term fix would be to have automake use am__CC in this case,
-   # and then we could set am__CC="\$(top_srcdir)/compile \$(CC)"
-   CC="$am_aux_dir/compile $CC"
-fi
-ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
 
 depcc="$CC"   am_compiler_list=
 
@@ -7590,65 +7509,6 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $CC understands -c and -o together" >&5
-$as_echo_n "checking whether $CC understands -c and -o together... " >&6; }
-if ${am_cv_prog_cc_c_o+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main ()
-{
-
-  ;
-  return 0;
-}
-_ACEOF
-  # Make sure it works both with $CC and with simple cc.
-  # Following AC_PROG_CC_C_O, we do the test twice because some
-  # compilers refuse to overwrite an existing .o file with -o,
-  # though they will create one.
-  am_cv_prog_cc_c_o=yes
-  for am_i in 1 2; do
-    if { echo "$as_me:$LINENO: $CC -c conftest.$ac_ext -o conftest2.$ac_objext" >&5
-   ($CC -c conftest.$ac_ext -o conftest2.$ac_objext) >&5 2>&5
-   ac_status=$?
-   echo "$as_me:$LINENO: \$? = $ac_status" >&5
-   (exit $ac_status); } \
-         && test -f conftest2.$ac_objext; then
-      : OK
-    else
-      am_cv_prog_cc_c_o=no
-      break
-    fi
-  done
-  rm -f core conftest*
-  unset am_i
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $am_cv_prog_cc_c_o" >&5
-$as_echo "$am_cv_prog_cc_c_o" >&6; }
-if test "$am_cv_prog_cc_c_o" != yes; then
-   # Losing compiler, so override with the script.
-   # FIXME: It is wrong to rewrite CC.
-   # But if we don't then we get into trouble of one sort or another.
-   # A longer-term fix would be to have automake use am__CC in this case,
-   # and then we could set am__CC="\$(top_srcdir)/compile \$(CC)"
-   CC="$am_aux_dir/compile $CC"
-fi
-ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-
 depcc="$CC"   am_compiler_list=
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking dependency style of $depcc" >&5
@@ -8305,6 +8165,7 @@ CFLAGS="$cflags_save"
 CPPFLAGS="$cppflags_save"
 CXXFLAGS="$cxxflags_save"
 
+
 if test -n "$ac_tool_prefix"; then
   for ac_prog in ar lib "link -lib"
   do
@@ -8412,18 +8273,12 @@ $as_echo_n "checking the archiver ($AR) interface... " >&6; }
 if ${am_cv_ar_interface+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-   am_cv_ar_interface=ar
+  am_cv_ar_interface=ar
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 int some_variable = 0;
 _ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
+if ac_fn_cxx_try_compile "$LINENO"; then :
   am_ar_try='$AR cru libconftest.a conftest.$ac_objext >&5'
       { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$am_ar_try\""; } >&5
   (eval $am_ar_try) 2>&5
@@ -8449,11 +8304,6 @@ if ac_fn_c_try_compile "$LINENO"; then :
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-   ac_ext=cpp
-ac_cpp='$CXXCPP $CPPFLAGS'
-ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $am_cv_ar_interface" >&5
@@ -9859,7 +9709,6 @@ fi
 $as_echo "$lt_cv_sharedlib_from_linklib_cmd" >&6; }
 sharedlib_from_linklib_cmd=$lt_cv_sharedlib_from_linklib_cmd
 test -z "$sharedlib_from_linklib_cmd" && sharedlib_from_linklib_cmd=$ECHO
-
 
 
 
@@ -19018,6 +18867,11 @@ _ACEOF
 
 $as_echo "#define BUILDING_AUDACITY 1" >>confdefs.h
 
+### Build With Rivendell
+##########################
+
+$as_echo "#define USE_LIBRIVENDELL 1" >>confdefs.h
+
 # Add -rdynamic to linker flags so the right symbols are exported for
 # plug-ins. This might not work on all architectures / compilers, so we need
 # to check if it does or not.
@@ -19094,6 +18948,7 @@ $as_echo "$as_me: WARNING: \"Linker does not support -rdynamic. Could not enable
    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: \"Audacity module support will probably not work\"" >&5
 $as_echo "$as_me: WARNING: \"Audacity module support will probably not work\"" >&2;}
 fi
+
 
 ### Build Options ###
 #####################
@@ -19365,6 +19220,12 @@ done
 
 
 
+
+#
+# Check for mysql
+#
+#toady   added this  but it has to be in env to find it.
+#AC_CHECK_HEADER(mysql.h,[],[AC_MSG_ERROR([*** Mysql Header Not Found ***])])
 
 
 
@@ -19853,24 +19714,69 @@ WX_LIBS=$($WX_CONFIG $wxconfigargs --libs)
 
 
 
+# Extract the first word of "mysql_config", so it can be a program name with args.
+set dummy mysql_config; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_MYSQL_CONFIG+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$MYSQL_CONFIG"; then
+  ac_cv_prog_MYSQL_CONFIG="$MYSQL_CONFIG" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_MYSQL_CONFIG="mysql_config"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
 
-ac_configure_args="$ac_configure_args --enable-static=yes --enable-shared=no"
+fi
+fi
+MYSQL_CONFIG=$ac_cv_prog_MYSQL_CONFIG
+if test -n "$MYSQL_CONFIG"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $MYSQL_CONFIG" >&5
+$as_echo "$MYSQL_CONFIG" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
 
-CXXFLAGS="$CXXFLAGS -I\$(top_srcdir)/include"
+
+  if test "x${MYSQL_CONFIG}" != x"mysql_config"; then
+    as_fn_error $? "The mysql library and header files are   " "$LINENO" 5
+    as_fn_error $? "Required to build RDacity project        " "$LINENO" 5
+  else
+    MYSQL_CONFIG_CFLAGS=`$MYSQL_CONFIG --cflags`
+    MYSQL_CONFIG_CPPFLAGS=`$MYSQL_CONFIG --include`
+    MYSQL_CONFIG_LIBS=`$MYSQL_CONFIG --libs`
 
 
 
-subdirs="$subdirs lib-src/FileDialog lib-src/mod-nyq-bench"
+  fi
 
-CXXFLAGS="$CXXFLAGS -I\$(top_srcdir)/lib-src/FileDialog"
-FILEDIALOG_LIBS='$(top_builddir)/lib-src/FileDialog/libFileDialog.la'
+#
+# Check for LibCurl
+#
+ac_fn_cxx_check_header_mongrel "$LINENO" "curl/curl.h" "ac_cv_header_curl_curl_h" "$ac_includes_default"
+if test "x$ac_cv_header_curl_curl_h" = xyes; then :
+
+else
+  as_fn_error $? "*** LibCurl not found ***" "$LINENO" 5
+fi
 
 
-LIBRARIES="EXPAT FFMPEG LAME LIBFLAC LIBID3TAG LIBMAD LIBNYQUIST LIBSBSMS LIBSNDFILE LIBSOUNDTOUCH LIBSOXR LIBTWOLAME LIBVAMP LIBVORBIS LV2 PORTAUDIO PORTSMF WIDGETEXTRA"
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: Determining what libraries are available in this tree and on the system" >&5
-$as_echo "$as_me: Determining what libraries are available in this tree and on the system" >&6;}
-
+#
+# check for Rivendell Riv C API Lib
 
 
 if test "x$ac_cv_env_PKG_CONFIG_set" != "xset"; then
@@ -19987,6 +19893,200 @@ $as_echo "no" >&6; }
 	fi
 
 fi
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for RIVCWEBAPI" >&5
+$as_echo_n "checking for RIVCWEBAPI... " >&6; }
+
+if test -n "$RIVCWEBAPI_CFLAGS"; then
+    pkg_cv_RIVCWEBAPI_CFLAGS="$RIVCWEBAPI_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"rivendell >= 0.0.1\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "rivendell >= 0.0.1") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_RIVCWEBAPI_CFLAGS=`$PKG_CONFIG --cflags "rivendell >= 0.0.1" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$RIVCWEBAPI_LIBS"; then
+    pkg_cv_RIVCWEBAPI_LIBS="$RIVCWEBAPI_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"rivendell >= 0.0.1\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "rivendell >= 0.0.1") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_RIVCWEBAPI_LIBS=`$PKG_CONFIG --libs "rivendell >= 0.0.1" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        RIVCWEBAPI_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors "rivendell >= 0.0.1" 2>&1`
+        else
+	        RIVCWEBAPI_PKG_ERRORS=`$PKG_CONFIG --print-errors "rivendell >= 0.0.1" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$RIVCWEBAPI_PKG_ERRORS" >&5
+
+	as_fn_error $? "Package requirements (rivendell >= 0.0.1) were not met:
+
+$RIVCWEBAPI_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+Alternatively, you may set the environment variables RIVCWEBAPI_CFLAGS
+and RIVCWEBAPI_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+" "$LINENO" 5
+elif test $pkg_failed = untried; then
+	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+Alternatively, you may set the environment variables RIVCWEBAPI_CFLAGS
+and RIVCWEBAPI_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+
+To get pkg-config, see <http://pkg-config.freedesktop.org/>.
+See \`config.log' for more details" "$LINENO" 5; }
+else
+	RIVCWEBAPI_CFLAGS=$pkg_cv_RIVCWEBAPI_CFLAGS
+	RIVCWEBAPI_LIBS=$pkg_cv_RIVCWEBAPI_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	:
+fi
+
+#
+# check for CURL Lib
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for LIBCURL" >&5
+$as_echo_n "checking for LIBCURL... " >&6; }
+
+if test -n "$LIBCURL_CFLAGS"; then
+    pkg_cv_LIBCURL_CFLAGS="$LIBCURL_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libcurl >= 0.0.1\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libcurl >= 0.0.1") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBCURL_CFLAGS=`$PKG_CONFIG --cflags "libcurl >= 0.0.1" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$LIBCURL_LIBS"; then
+    pkg_cv_LIBCURL_LIBS="$LIBCURL_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libcurl >= 0.0.1\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libcurl >= 0.0.1") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBCURL_LIBS=`$PKG_CONFIG --libs "libcurl >= 0.0.1" 2>/dev/null`
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        LIBCURL_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors "libcurl >= 0.0.1" 2>&1`
+        else
+	        LIBCURL_PKG_ERRORS=`$PKG_CONFIG --print-errors "libcurl >= 0.0.1" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$LIBCURL_PKG_ERRORS" >&5
+
+	as_fn_error $? "Package requirements (libcurl >= 0.0.1) were not met:
+
+$LIBCURL_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+Alternatively, you may set the environment variables LIBCURL_CFLAGS
+and LIBCURL_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+" "$LINENO" 5
+elif test $pkg_failed = untried; then
+	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+Alternatively, you may set the environment variables LIBCURL_CFLAGS
+and LIBCURL_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+
+To get pkg-config, see <http://pkg-config.freedesktop.org/>.
+See \`config.log' for more details" "$LINENO" 5; }
+else
+	LIBCURL_CFLAGS=$pkg_cv_LIBCURL_CFLAGS
+	LIBCURL_LIBS=$pkg_cv_LIBCURL_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	:
+fi
+
+
+ac_configure_args="$ac_configure_args --enable-static=yes --enable-shared=no"
+
+CXXFLAGS="$CXXFLAGS -I\$(top_srcdir)/include $MYSQL_CONFIG_CPPFLAGS"
+
+
+
+subdirs="$subdirs lib-src/FileDialog lib-src/mod-nyq-bench"
+
+CXXFLAGS="$CXXFLAGS -I\$(top_srcdir)/lib-src/FileDialog"
+FILEDIALOG_LIBS='$(top_builddir)/lib-src/FileDialog/libFileDialog.la'
+
+
+LIBRARIES="EXPAT FFMPEG LAME LIBFLAC LIBID3TAG LIBMAD LIBNYQUIST LIBSBSMS LIBSNDFILE LIBSOUNDTOUCH LIBSOXR LIBTWOLAME LIBVAMP LIBVORBIS LV2 PORTAUDIO PORTSMF WIDGETEXTRA"
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: Determining what libraries are available in this tree and on the system" >&5
+$as_echo "$as_me: Determining what libraries are available in this tree and on the system" >&6;}
+
 
 
 

@@ -70,6 +70,8 @@
 #include "RivendellBrowseDialog.h"
 #include "RivendellDialog.h"
 
+#include "widgets/ProgressDialog.h"
+
 #include "MyProgressThread.h"
 #include "rivendell/rd_import.h"
 #include "Audacity.h"
@@ -650,6 +652,8 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
     unsigned long cartNewNumber;
     unsigned long cutNewNumber = 1;
     wxString holdCutId;
+    struct rd_cartimport *cartimport=0;
+    unsigned numrecs;
     
     //
     // Get Rivendell Parameters
@@ -1298,7 +1302,7 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
     #ifdef _WIN32
         fName.Printf(_T("%s\\%s.wav"), wxString(soundsDir, wxConvLocal).c_str() ,cutName.c_str());
     #else
-        fName.Printf(_T("%s/%s.wav"), wxString(soundsDir, wxConvLocal).c_str(), cutName.c_str());
+        fName.Printf(_T("%s%s.wav"), wxString(soundsDir, wxConvLocal).c_str(), cutName.c_str());
     #endif
     
     // Create a mixerspec object to be used on the export below.
@@ -1336,7 +1340,7 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
     int webResult;
  
     RivendellCfg->ParseInt("MySQL", "Version", DbVersion);
- 
+
     if (DbVersion >= 252)  /* This is Rivendell 2.0 */
     {
         if (!RivendellCfg->ParseString("RivendellWebHost", "Rivhost", rivHost))
@@ -1351,8 +1355,13 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
 	
 	// Start Progress Bar In Another Thread
 	MyProgressThread* myprogressthread = new MyProgressThread();
+	  
+	//  In Rivendell 2.0 eventually this will need to do all Import Funtionality
+	// At Present - Carts/Cuts exists no matter what.
+
 	strcpy(rivUser, riv_getuser(mDb).c_str());
-	webResult = RD_ImportCart(rivHost,
+	webResult = RD_ImportCart(&cartimport,
+            rivHost,
 	    rivUser,
 	    "",
 	    cartNewNumber,
@@ -1361,7 +1370,11 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
 	    0,
 	    0,
 	    0,
-	    fName);
+            0,
+            groupString.c_str(),   
+	    fName,
+            &numrecs);
+
 	// Kill the progress Thread
 	myprogressthread->Delete();
 	myprogressthread->Wait();

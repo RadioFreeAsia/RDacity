@@ -36,15 +36,11 @@
 
 //#define WINRIVCFG "C:\\Program Files\\SalemRadioLabs\\rivendell\\rd.ini"
 #define WINRIVCFG "c:\\Program Files (x86)\\Audacity_RFA\\Portable Settings\\rd.ini"
-#define POSIXRIVCFG "/etc/rd.conf"
+#define POSIXRIVCFG "/etc/rdacity/rd.ini"
 
 //
 //WINRRIVCFG is overlaid with the executabledir\PortableSetting dir if possible..
 
-/* Version of the Rivendell database this version of Audacity works with */
-//02/05/09 now defined in rd.ini
-//#define RD_VERSION_DATABASE 163
-//#define RD_VERSION_DATABASE 162
 
 class RivendellConfig
 {
