@@ -78,6 +78,20 @@ public:
     void PopulateDialog(int cartId=-1, int cutId=-1);
     bool Chk_Ascii(const char * chk_string);
     void Export_Failure( const char *cutname, const wxString msg);
+    bool Get_Rivendell_Parameters(  int * format,  int * channel,  int * samplerate);
+    bool Chk_Title(char * Title);
+    bool Chk_Label(char * Label);
+    bool Chk_Album(char * Album);
+    bool Chk_Artist(char * Artist);
+    bool Chk_Client( char * Client);
+    bool Chk_Agency( char * Agency);
+    bool Chk_Description( char * Description);
+    bool Compute_Length(double * length);
+    void Process_Riv_2(wxString groupString);
+    bool Check_Start_End_Date( wxString * sdate, wxString * edate);
+    void Set_Year(wxString * year);
+    bool Verify_Update( unsigned long  cartnum, unsigned long * cutnum,
+		const char host[], const char user[]);
 
 private:   
     wxChoice        *mChoiceGroup;

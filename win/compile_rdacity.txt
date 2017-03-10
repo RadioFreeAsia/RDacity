@@ -1,6 +1,9 @@
 Compiling RDacity
 
-This is an overview of compiling the Audacity For Rivendell software in Windows Visual Studio.   
+This is an overview of compiling the Audacity For Rivendell software - in Windows Visual Studio
+
+Note: Linux User - see Linux Notes in compile_radacity_linux.txt!
+
 I suggest creating a directory to put the external libraries,
 I called mine Projects. You will need three subdirectories, 1 for each library.
 

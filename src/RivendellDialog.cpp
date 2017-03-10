@@ -74,6 +74,11 @@
 
 #include "MyProgressThread.h"
 #include "rivendell/rd_import.h"
+#include "rivendell/rd_editcart.h"
+#include "rivendell/rd_editcut.h"
+#include "rivendell/rd_listcart.h"
+#include "rivendell/rd_listcut.h"
+#include "rivendell/rd_addcut.h"
 #include "Audacity.h"
 #include "Mix.h" //NEW
 
@@ -636,57 +641,23 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
 
     //double length = mSaveSelection ? p->GetSel1() - p->GetSel0() : p->GetTracks()->GetEndTime();
     double length = 0.0;    //Figure out the length below;
-    int format;
-    int channels;
-    int samplerate;
+    int format=0;
+    int channels=0;
+    int samplerate=0;
     int cut_quantity;
+    char *endPtr;
     char	soundsDir[255];  // FIXME: make this a wxString.
     wxString fName;
     MYSQL_RES *result;
     MYSQL_ROW row;
     wxString	query;
-    char str[255];
-    char *endPtr;
     bool new_cart_flag = false;
     bool new_cut_flag = false;
     unsigned long cartNewNumber;
     unsigned long cutNewNumber = 1;
     wxString holdCutId;
-    struct rd_cartimport *cartimport=0;
-    unsigned numrecs;
     
-    //
-    // Get Rivendell Parameters
-    //
-    if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultFormat", str)) 
-    {
-        wxMessageBox(_("Unable to find DefaultFormat in rd configuration"), _("Rivendell"), wxICON_ERROR|wxOK);
-        return;
-    }
-    else
-    {
-            format=strtol(str, &endPtr, 10);
-    }
-
-    if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultChannels", str)) 
-    {
-        wxMessageBox(_("Unable to find DefaultChannels in rd configuration"), _("Rivendell"), wxICON_ERROR|wxOK);
-        return;
-    }
-    else
-    {
-        channels=strtol(str, &endPtr, 10);
-    }
-
-    if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultSampRate", str)) 
-    {
-        wxMessageBox(_("Unable to find DefaultSampRate in rd configuration"), _("Rivendell"), wxICON_ERROR|wxOK);
-        return;
-    }
-    else
-    {
-        samplerate=strtol(str, &endPtr, 10);
-    }
+  
     //
     // Checks for required fields on the form.
     if (((wxTextCtrl*)FindWindow(wxID_TITLE))->GetValue().IsEmpty()) {
@@ -703,84 +674,13 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
 	 since right now only proper formatting is checked*/
     wxString sDate;
     wxString eDate;
-    //wxChar * rctmp; // temporary return code variable.   WxWidget 3.0.2 Broke this toady
-    wxDateTime datetmp = wxDateTime::Now(); // temporary variable to check date.
-	wxDateTime datetmp2 = wxDateTime::Now(); // temp variable for checking dates
-    bool errorflag; // errorflag for messagebox if dates have improper length
+    if (!Check_Start_End_Date( &sDate, &eDate))
+        return;
 
-	if (((wxCheckBox *)FindWindow(wxID_EVERGREEN))->GetValue() == true) {
-        sDate = _T("NULL");
-        eDate = _T("NULL");
-    } else {	
-        // Verify valid format for Start Date.
-        errorflag = false;
-        sDate = ((wxTextCtrl*)FindWindow(wxID_STARTDATE))->GetValue();
-        if (sDate.length() == 8) { 		
-            datetmp.ParseFormat(sDate, _T("%m/%d/%y"));
-            if (!datetmp.IsValid()) {
-                errorflag = true;	
-            }
-        } else if (sDate.length() == 10) {
-            datetmp.ParseFormat(sDate, _T("%m/%d/%Y"));
-			if (!datetmp.IsValid()) {
-                errorflag = true;	
-            }
-        } else {
-            errorflag = true;
-		}
-
-        if (errorflag == true) {
-            wxMessageBox(_("Start Date Format Error (MM/DD/YYYY)"), _("Rivendell"), wxICON_ERROR|wxOK);
-            return;
-            }
-        // Format sDate for the Database
-        sDate = datetmp.Format(_T("\"%Y-%m-%d\""));
-
-        // Verify valid format for End Date.
-        errorflag = false;
-        eDate = ((wxTextCtrl*)FindWindow(wxID_ENDDATE))->GetValue();
-        if (eDate.length() == 8) { 		
-            datetmp2.ParseFormat(eDate, _T("%m/%d/%y"));
-			if (!datetmp2.IsValid()) {
-                errorflag = true;	
-            }
-        } else if (eDate.length() == 10) {
-            datetmp2.ParseFormat(eDate, _T("%m/%d/%Y"));
-			if (!datetmp2.IsValid()) {
-                errorflag = true;	
-            }
-        } else {
-            errorflag = true;
-        }
-
-        if (errorflag == true) {
-            wxMessageBox(_("End Date Format Error (MM/DD/YYYY)"), _("Rivendell"), wxICON_ERROR|wxOK);
-            return;
-        }
-        // Format eDate for the Database
-        eDate = datetmp2.Format(_T("\"%Y-%m-%d\""));
-
-		// Verify Start Date not Greater than End Date
-	    if (datetmp >= datetmp2)  {
-            wxMessageBox(_("      Start Date Cannot be Greater Than or Equal To End Date"), _("Rivendell"), wxICON_ERROR|wxOK);
-            return;
-	    }
-    }
-
-    // Verify valid format for year.
+    // Set Year
     wxString year;
-    datetmp.SetMonth(wxDateTime::Jan);
-    datetmp.SetDay(01);
-    year = ((wxTextCtrl*)FindWindow(wxID_YEAR))->GetValue();
-	if (year.IsEmpty())
-	{
-		year = _T("NULL");
-	} else {
-		datetmp.ParseFormat(year, _T("%Y"));
-		year = datetmp.Format(_T("\"%Y-%m-%d\""));
-	}
-
-  	
+    Set_Year(&year);
+    
     // Checks for valid cart range.
     wxString groupString = ((wxChoice*)FindWindow(wxID_GROUP))->GetStringSelection();
 
@@ -789,6 +689,22 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
 		wxMessageBox(_("      Cannot Export \n No Valid Group Selected"), _("Rivendell"), wxICON_ERROR|wxOK);
         return;
 	}
+
+    // IF We are in 2.0 DB then Call NEW DB Code and exit ONOK
+    int DbVersion;
+    RivendellCfg->ParseInt("MySql", "Version", DbVersion);
+    if (DbVersion >= 252)
+    {
+        Process_Riv_2(groupString);
+        return;
+    } 
+
+    //
+    // Get Rivendell Parameters
+    //
+    if (!Get_Rivendell_Parameters( &format, &channels, &samplerate))
+        return;
+
     query.Printf(_T("select DEFAULT_LOW_CART,DEFAULT_HIGH_CART from GROUPS where NAME=\"%s\""), groupString.c_str());
     // FIXME: should sterilize contents of groupString before sending to sql.
     mysql_query(mDb, query.mb_str());
@@ -809,7 +725,6 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
         wxMessageBox(_("  The Group has no Default Range - Please enter A Cart Number"));
         return;
     }
-
     // Calculate cart number for new content.
     if (((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->GetValue().IsEmpty() ||
         !((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->GetValue().ToULong(&cartNewNumber))
@@ -956,80 +871,8 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
 	cut_validity = 1;
     }
 	
-    //
-    //         Figure out length allowing for Muted track(s)
-    //
-    if (mSaveSelection)
-    {
-	TrackList *tracks = p->GetTracks();
-	TrackListIterator iter1(tracks);
-	Track *tr = iter1.First();
-	double max = 0.0;
-	while (tr) 
-        {
-            if ( (tr->GetKind() == Track::Wave) &&
-               (tr->GetSelected()) &&
-               (!tr->GetMute() ) ) 
-            {
-                if (max < tr->GetEndTime())
-                {
-                    max= tr->GetEndTime();
-                }
-	    }
-	    tr = iter1.Next();
-	}
-	if (max < (p->GetSel1() - p->GetSel0()))
-	{
-            length = max;
-	}
-	else
-	{
-            length = p->GetSel1() - p->GetSel0();
-	}
-    }
-    else
-    {
-        TrackList *tracks = p->GetTracks();
-	TrackListIterator iter1(tracks);
-	Track *tr = iter1.First();
-	double max = 0.0;
-	while (tr) 
-        {
-            if ( (tr->GetKind() == Track::Wave) &&
-               (!tr->GetMute() ) ) 
-            {
-                if (max < tr->GetEndTime())
-                {
-                    max= tr->GetEndTime();
-                }
-	    }
-            tr = iter1.Next();
-	}
-	length = max;
-    }
-
-    // Checking that there IS actually something to export (length not zero)...
-    if (length == 0)
-    {
-        wxString message;
-        wxString titlebox;
-        if(mSaveSelection)
-        {
-            message = _("There is no Audio Selected to be Exported \nCheck for Muted Track(s).");
-            titlebox = _("Unable to Export Selection to Rivendell");
-        }
-        else
-        {
-            message = _("There is no Audio to be Exported \nCheck for Muted Track(s).");
-            titlebox = _("Unable to Export to Rivendell");
-        }
-
-        wxMessageBox(message,
-            titlebox,
-            wxICON_ERROR|wxOK);
+    if (!Compute_Length(&length))
         return;
-    }
-    
 
     // Sterilize content from GUI dialog before sending it to SQL.
     char rd_title[513*4];    // sized for mysql_real_escape_string() to be ((len * 2) * 4)+1  (for Unicode too).
@@ -1046,77 +889,23 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
         WX2UNI(hold_Title),
         strlen(WX2UNI(hold_Title)));
 
-    wxString hold_Artist = ((wxTextCtrl*)FindWindow(wxID_ARTIST))->GetValue().wx_str();
-    if (!Chk_Ascii(WX2UNI(hold_Artist)))
-    {
-        wxMessageBox(_("Error: Illegal Character(s) detected in Artist!\nCheck For Spaces at Beginning"),
-            _("Rivendell"), wxICON_ERROR|wxOK);
-        return;
-    }
-    mysql_real_escape_string(mDb, 
-        rd_artist, 
-        WX2UNI(hold_Artist),
-        strlen(WX2UNI(hold_Artist)));
+    if (!Chk_Artist(&rd_artist[0]))
+       return;
 
-    wxString hold_Album = ((wxTextCtrl*)FindWindow(wxID_ALBUM))->GetValue().wx_str();
-    if (!Chk_Ascii(WX2UNI(hold_Album)))
-    {
-        wxMessageBox(_("Error: Illegal Character(s) detected in Album!\nCheck For Spaces at Beginning"),
-            _("Rivendell"), wxICON_ERROR|wxOK);
+    if (!Chk_Album(&rd_album[0]))
         return;
-    }
-    mysql_real_escape_string(mDb, 
-        rd_album, 
-        WX2UNI(hold_Album),
-        strlen(WX2UNI(hold_Album)));
 
-    wxString hold_Label = ((wxTextCtrl*)FindWindow(wxID_LABEL))->GetValue().wx_str();
-    if (!Chk_Ascii(WX2UNI(hold_Label)))
-    {
-        wxMessageBox(_("Error: Illegal Character(s) detected in Label!\nCheck For Spaces at Beginning"),
-            _("Rivendell"), wxICON_ERROR|wxOK);
+    if (!Chk_Label(&rd_label[0]))
         return;
-    }
-    mysql_real_escape_string(mDb, 
-        rd_label, 
-        WX2UNI(hold_Label),
-        strlen(WX2UNI(hold_Label)));
 
-    wxString hold_Client = ((wxTextCtrl*)FindWindow(wxID_CLIENT))->GetValue().wx_str();
-    if (!Chk_Ascii(WX2UNI(hold_Client)))
-    {
-	wxMessageBox(_("Error: Illegal Character(s) detected in Client!\nCheck For Spaces at Beginning"),
-	    _("Rivendell"), wxICON_ERROR|wxOK);
+    if (!Chk_Client(&rd_client[0]))
         return;
-    }
-    mysql_real_escape_string(mDb, 
-        rd_client, 
-        WX2UNI(hold_Client),
-        strlen(WX2UNI(hold_Client)));
 
-    wxString hold_Agency = ((wxTextCtrl*)FindWindow(wxID_AGENCY))->GetValue().wx_str();
-    if (!Chk_Ascii(WX2UNI(hold_Agency)))
-    {
-	wxMessageBox(_("Error: Illegal Character(s) detected in Agency!\nCheck For Spaces at Beginning"),
-	    _("Rivendell"), wxICON_ERROR|wxOK);
-	return;
-    }
-    mysql_real_escape_string(mDb, 
-        rd_agency, 
-        WX2UNI(hold_Agency),
-        strlen(WX2UNI(hold_Agency)));
-
-    wxString hold_Description = ((wxTextCtrl*)FindWindow(wxID_DESCRIPTION))->GetValue().wx_str();
-    if (!Chk_Ascii(WX2UNI(hold_Description)))
-    {
-        wxMessageBox(_("Error: Illegal Character(s) detected in Description!\nCheck For Spaces at Beginning"),
-            _("Rivendell"), wxICON_ERROR|wxOK);
+    if (!Chk_Agency(&rd_agency[0]))
         return;
-    }
-    mysql_real_escape_string(mDb, 
-        rd_description, 
-        WX2UNI(hold_Description),
-        strlen(WX2UNI(hold_Description)));
+    
+    if (!Chk_Description(&rd_description[0]))
+        return;
 
     wxString cutName; 
     cutName.Printf(_T("%06d_%03d"), (int)cartNewNumber, (int)cutNewNumber);
@@ -1334,82 +1123,6 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
     }
 	
     delete ms;
-    int DbVersion;
-    char rivHost[255];     //The Rivendell Host - Web API Call will user
-    char rivUser[255]; // The Rivendell User to use for Web Call
-    int webResult;
- 
-    RivendellCfg->ParseInt("MySQL", "Version", DbVersion);
-
-    if (DbVersion >= 252)  /* This is Rivendell 2.0 */
-    {
-        if (!RivendellCfg->ParseString("RivendellWebHost", "Rivhost", rivHost))
-	{
-	    exportstatus = 0;
-	}
-	if (exportstatus != 1)
-	{
-		Export_Failure( "", (_("The Export FAILED !Incorrect 2.0 Configuration !")));
-	    return;
-	}
-	
-	// Start Progress Bar In Another Thread
-	MyProgressThread* myprogressthread = new MyProgressThread();
-	  
-	//  In Rivendell 2.0 eventually this will need to do all Import Funtionality
-	// At Present - Carts/Cuts exists no matter what.
-
-	strcpy(rivUser, riv_getuser(mDb).c_str());
-	webResult = RD_ImportCart(&cartimport,
-            rivHost,
-	    rivUser,
-	    "",
-	    cartNewNumber,
-	    cutNewNumber,
-	    (unsigned)1,
-	    0,
-	    0,
-	    0,
-            0,
-            groupString.c_str(),   
-	    fName,
-            &numrecs);
-
-	// Kill the progress Thread
-	myprogressthread->Delete();
-	myprogressthread->Wait();
-	delete myprogressthread;
- 
-	if (webResult < 0)
-	{
-            Export_Failure( "", (_("The Export FAILED ! Server Error !")));
-	    return;
-	}
- 
-	if ((webResult < 200 || webResult > 299) &&
-		(webResult != 0))
-	{
-	    switch (webResult) 
-            {
-		case 404:
-		    Export_Failure("",
-			(_("The Export FAILED ! No Cart/Cut Exists !")));
-			return;
-		case 403:
-		    Export_Failure( "",
-			(_("The Export FAILED ! Edit Permission Failure !")));
-		    return;
-		case  401:
-		    Export_Failure( "",
-			(_("The Export FAILED ! Unauthorized or Cart out of Range")));
-			return;
-		default:
-		    Export_Failure( cutName.c_str(),
-			(_("The Export FAILED ! Server Error !")));
-			return;
-            }
-	}
-    }
 }
 
 
@@ -1446,3 +1159,690 @@ void RivendellDialog::Export_Failure(const char * cutname, const wxString msg)
     return;
 }
 
+bool RivendellDialog::Chk_Title(char * Title)
+{
+
+    wxString hold_Title = ((wxTextCtrl*)FindWindow(wxID_TITLE))->GetValue().wx_str();
+    if (!Chk_Ascii(WX2UNI(hold_Title)))
+    {
+        wxMessageBox(_("Error: Illegal Character(s) detected in Title!\nCheck For Spaces at Beginning"),
+            _("Rivendell"), wxICON_ERROR|wxOK);
+        return false;
+    }
+    mysql_real_escape_string(mDb,
+        Title,
+        WX2UNI(hold_Title),
+        strlen(WX2UNI(hold_Title)));
+    return true;
+}
+bool RivendellDialog::Chk_Artist(char * Artist)
+{
+
+    wxString hold_Artist = ((wxTextCtrl*)FindWindow(wxID_ARTIST))->GetValue().wx_str();
+    if (!Chk_Ascii(WX2UNI(hold_Artist)))
+    {
+        wxMessageBox(_("Error: Illegal Character(s) detected in Artist!\nCheck For Spaces at Beginning"),
+            _("Rivendell"), wxICON_ERROR|wxOK);
+        return false;
+    }
+    mysql_real_escape_string(mDb,
+        Artist,
+        WX2UNI(hold_Artist),
+        strlen(WX2UNI(hold_Artist)));
+    return true;
+}
+
+bool RivendellDialog::Chk_Album(char * Album)
+{
+    wxString hold_Album = ((wxTextCtrl*)FindWindow(wxID_ALBUM))->GetValue().wx_str();
+    if (!Chk_Ascii(WX2UNI(hold_Album)))
+    {
+        wxMessageBox(_("Error: Illegal Character(s) detected in Album!\nCheck For Spaces at Beginning"),
+            _("Rivendell"), wxICON_ERROR|wxOK);
+        return false;
+    }
+    mysql_real_escape_string(mDb, 
+        Album, 
+        WX2UNI(hold_Album),
+        strlen(WX2UNI(hold_Album)));
+    return true;
+}
+
+bool RivendellDialog::Chk_Label(char * Label)
+{
+    wxString hold_Label = ((wxTextCtrl*)FindWindow(wxID_LABEL))->GetValue().wx_str();
+    if (!Chk_Ascii(WX2UNI(hold_Label)))
+    {
+        wxMessageBox(_("Error: Illegal Character(s) detected in Label!\nCheck For Spaces at Beginning"),
+            _("Rivendell"), wxICON_ERROR|wxOK);
+        return false;
+    }
+    mysql_real_escape_string(mDb, 
+        Label, 
+        WX2UNI(hold_Label),
+        strlen(WX2UNI(hold_Label)));
+    return true;
+}
+
+bool RivendellDialog::Chk_Client( char * Client)
+{
+    wxString hold_Client = ((wxTextCtrl*)FindWindow(wxID_CLIENT))->GetValue().wx_str();
+    if (!Chk_Ascii(WX2UNI(hold_Client)))
+    {
+	wxMessageBox(_("Error: Illegal Character(s) detected in Client!\nCheck For Spaces at Beginning"),
+	    _("Rivendell"), wxICON_ERROR|wxOK);
+        return false;
+    }
+    mysql_real_escape_string(mDb, 
+        Client, 
+        WX2UNI(hold_Client),
+        strlen(WX2UNI(hold_Client)));
+    return true;
+}
+
+bool RivendellDialog::Chk_Agency( char * Agency)
+{
+    wxString hold_Agency = ((wxTextCtrl*)FindWindow(wxID_AGENCY))->GetValue().wx_str();
+    if (!Chk_Ascii(WX2UNI(hold_Agency)))
+    {
+	wxMessageBox(_("Error: Illegal Character(s) detected in Agency!\nCheck For Spaces at Beginning"),
+	    _("Rivendell"), wxICON_ERROR|wxOK);
+	return false;
+    }
+    mysql_real_escape_string(mDb, 
+        Agency, 
+        WX2UNI(hold_Agency),
+        strlen(WX2UNI(hold_Agency)));
+    return true;
+}
+
+bool RivendellDialog::Chk_Description( char * Description)
+{
+    wxString hold_Description = ((wxTextCtrl*)FindWindow(wxID_DESCRIPTION))->GetValue().wx_str();
+    if (!Chk_Ascii(WX2UNI(hold_Description)))
+    {
+        wxMessageBox(_("Error: Illegal Character(s) detected in Description!\nCheck For Spaces at Beginning"),
+            _("Rivendell"), wxICON_ERROR|wxOK);
+        return false;
+    }
+    mysql_real_escape_string(mDb, 
+        Description, 
+        WX2UNI(hold_Description),
+        strlen(WX2UNI(hold_Description)));
+    return true;
+}
+
+bool RivendellDialog::Get_Rivendell_Parameters(  int * format,  int * channels,  int * samplerate)
+{
+    char str[255];
+    char *endPtr;
+
+    if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultFormat", str)) 
+    {
+        wxMessageBox(_("Unable to find DefaultFormat in rd configuration"), _("Rivendell"), wxICON_ERROR|wxOK);
+        return false;
+    }
+    else
+    {
+            *format=strtol(str, &endPtr, 10);
+    }
+
+    if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultChannels", str)) 
+    {
+        wxMessageBox(_("Unable to find DefaultChannels in rd configuration"), _("Rivendell"), wxICON_ERROR|wxOK);
+        return false;
+    }
+    else
+    {
+        *channels=strtol(str, &endPtr, 10);
+    }
+
+    if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultSampRate", str)) 
+    {
+        wxMessageBox(_("Unable to find DefaultSampRate in rd configuration"), _("Rivendell"), wxICON_ERROR|wxOK);
+        return false;
+    }
+    else
+    {
+        *samplerate=strtol(str, &endPtr, 10);
+    }
+    return true;
+}
+
+void RivendellDialog::Process_Riv_2(wxString groupString)
+{
+
+    double length = 0.0;    //Figure out the length below;
+    int format=0;
+    int channels=0;
+    int samplerate=0;
+    char	soundsDir[255];  // FIXME: make this a wxString.
+    wxString fName;
+    char rivHost[255];     //The Rivendell Host - Web API Call will user
+    char rivUser[255]; // The Rivendell User to use for Web Call
+    int webResult;
+    int result;
+    int create_flag = 0;
+    unsigned long cartNewNumber;
+    unsigned long cutNewNumber = 1;
+    wxString holdCutId;
+    struct rd_cartimport *cartimport=0;
+    struct rd_cart *carts=0;
+    struct rd_cut *cuts=0;
+    unsigned numrecs = 0;
+    wxString cutName;
+
+    AudacityProject *p = GetActiveProject();
+ 
+    // Calculate cart number for content.
+    if (((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->GetValue().IsEmpty() ||
+        !((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->GetValue().ToULong(&cartNewNumber))
+    {
+        cartNewNumber=0;
+        cutNewNumber=0;
+        create_flag = 1;
+    }
+    else
+    {
+        if (((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->GetValue().IsEmpty() ||
+           (!((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->GetValue().ToULong(&cutNewNumber)) )
+        {        // This has a Cart Number but NO Cut Number!
+ 	    wxMessageBox(_("Cart Number Must have A Cut Number"), _("Rivendell"), wxICON_ERROR|wxOK);
+            return;
+        }
+    
+    }
+
+    if (!RivendellCfg->ParseString("RivendellWebHost", "Rivhost", rivHost))
+    {
+	Export_Failure( "", (_("The Export FAILED !Incorrect 2.0 Configuration !")));
+	return;
+    }
+
+    // Git the Riv User
+    strcpy(rivUser, riv_getuser(mDb).c_str());
+
+
+    if (cartNewNumber !=0)  // Check that they want to Overwrite
+    {
+        if (!Verify_Update(cartNewNumber, &cutNewNumber,
+		rivHost, rivUser ))
+	    return;
+    }
+    cutName.Printf(_T("%06d_%03d"), (int)cartNewNumber, (int)cutNewNumber);
+    //
+    // Get Rivendell Parameters
+    //
+    if (!Get_Rivendell_Parameters( &format, &channels, &samplerate))
+        return;
+
+    // Do the work required to export.
+
+    int exportstatus = 0; 
+    ExportPlugin * e;
+    e = New_ExportPCM();
+ 
+    // Retrieve destination sound dir from the configuration file.
+    if (!RivendellCfg->ParseString("Cae", "AudioRoot", soundsDir)) 
+    {
+        wxMessageBox(_("Unable to find AudioRoot in rd configuration"), _("Rivendell"), wxICON_ERROR|wxOK);
+        return;
+    }
+    #ifdef _WIN32
+        fName.Printf(_T("%s\\%s.wav"), wxString(soundsDir, wxConvLocal).c_str() ,cutName.c_str());
+    #else
+        fName.Printf(_T("%s%s.wav"), wxString(soundsDir, wxConvLocal).c_str(), cutName.c_str());
+    #endif
+    
+    // Create a mixerspec object to be used on the export below.
+    MixerSpec * ms;
+    ms = new MixerSpec( 1, 2 );
+       
+    p->AS_SetRate(samplerate); 
+    if (mSaveSelection)
+    {
+      exportstatus = e->Export(p, channels, fName, true, p->GetSel0(), p->GetSel1(), ms, 0,format);
+    }
+    else
+    {
+      exportstatus = e->Export(p, channels, fName, false, 0.f, p->GetTracks()->GetEndTime(), ms, 0,format);
+    }
+    p->AS_SetRate(samplerate);
+    EndModal(wxID_OK);
+
+// Need to check exportstatus and if failed turn all days OFF
+// Change Validity to Zero, Length to Zero
+    
+    if (exportstatus != 1)  
+    {
+	Export_Failure( cutName.c_str(),
+	    (_("The Export appears to have FAILED !!!")));
+	return;
+    }
+	
+    if (!Compute_Length(&length))
+        return;
+
+    // Sterilize content from GUI dialog before sending it to SQL.
+    char rd_title[513*4];    // sized for mysql_real_escape_string() to be ((len * 2) * 4)+1  (for Unicode too).
+    char rd_artist[513*4];
+    char rd_album[513*4];
+    char rd_label[129*4];
+    char rd_client[129*4];
+    char rd_agency[129*4];
+    char rd_description[129*4];
+
+    if (!Chk_Title(&rd_title[0]))
+       return;
+
+    if (!Chk_Artist(&rd_artist[0]))
+       return;
+
+    if (!Chk_Album(&rd_album[0]))
+        return;
+
+    if (!Chk_Label(&rd_label[0]))
+        return;
+
+    if (!Chk_Client(&rd_client[0]))
+        return;
+
+    if (!Chk_Agency(&rd_agency[0]))
+        return;
+    
+    if (!Chk_Description(&rd_description[0]))
+        return;
+    // Start Progress Bar In Another Thread
+    MyProgressThread* myprogressthread = new MyProgressThread();
+	  
+	//  In Rivendell 2.0 eventually this will need to do all Import Funtionality
+	// At Present - Carts/Cuts exists no matter what.
+
+    webResult = RD_ImportCart(&cartimport,
+        rivHost,
+	rivUser,
+	"",
+	cartNewNumber,
+	cutNewNumber,
+	(unsigned)1,
+	0,
+	0,
+	0,
+        create_flag,
+        groupString.c_str(),   
+	fName,
+        &numrecs);
+
+	// Kill the progress Thread
+	myprogressthread->Delete();
+	myprogressthread->Wait();
+	delete myprogressthread;
+ 
+	if (webResult < 0)
+	{
+            Export_Failure( "", (_("The Export FAILED ! Server Error !")));
+	    return;
+	}
+ 
+	if ((webResult < 200 || webResult > 299) &&
+		(webResult != 0))
+	{
+	    switch (webResult) 
+            {
+		case 404:
+		    Export_Failure("",
+			(_("The Export FAILED ! No Cart/Cut Exists !")));
+			return;
+		case 403:
+		    Export_Failure( "",
+			(_("The Export FAILED ! Edit Permission Failure !")));
+		    return;
+		case  401:
+		    Export_Failure( "",
+			(_("The Export FAILED ! Unauthorized or Cart out of Range")));
+			return;
+		default:
+		    Export_Failure( cutName.c_str(),
+			(_("The Export FAILED ! Server Error !")));
+			return;
+            }
+	}
+        if (numrecs == 1)
+        {
+            cartNewNumber = cartimport[numrecs - 1].cart_number;
+            cutNewNumber =  cartimport[numrecs - 1].cut_number;
+        }
+        cutName.Printf(_T("%06d_%03d"), (int)cartNewNumber, (int)cutNewNumber);
+        
+        //  Edit Cart Update
+        struct edit_cart_values edit_cart;
+        memset(&edit_cart,0,sizeof(struct edit_cart_values));
+        edit_cart.use_cart_title = 1;
+        strcpy( edit_cart.cart_title, rd_title);
+        edit_cart.use_cart_artist = 1;
+        strcpy( edit_cart.cart_artist,rd_artist);
+        edit_cart.use_cart_album = 1;
+        strcpy( edit_cart.cart_album, rd_album);
+        edit_cart.use_cart_label = 1;
+        strcpy( edit_cart.cart_label, rd_label);
+        edit_cart.use_cart_client = 1;
+        strcpy( edit_cart.cart_client, rd_client);
+        edit_cart.use_cart_agency = 1;
+        strcpy( edit_cart.cart_agency, rd_agency);
+
+        result= RD_EditCart(&carts,
+            edit_cart,
+            rivHost,
+            rivUser,
+            "",
+            cartNewNumber,
+            &numrecs);
+
+        if ((result< 200 || result > 299) &&
+            (result != 0))
+        {
+            switch(result) {
+                case 400:
+		    Export_Failure( cutName.c_str(),
+			(_("The Export FAILED ! 400 Error !")));
+                    return;
+               case 404:
+		   Export_Failure( cutName.c_str(),
+                       (_("The Export FAILED ! 404 Error !")));
+	           return;
+               default:
+		   Export_Failure( cutName.c_str(),
+                       (_("The Export FAILED ! Unknown  Error !")));
+                   return;
+            }        
+        }
+        
+        //Edit Cut Update
+        struct edit_cut_values edit_cut;
+        memset(&edit_cut,0,sizeof(struct edit_cut_values));
+        edit_cut.use_cut_description=1;
+        strcpy(edit_cut.cut_description,rd_description);
+        
+        result= RD_EditCut(&cuts,
+            edit_cut,
+            rivHost,
+            rivUser,
+            "",
+            cartNewNumber,
+            cutNewNumber,
+            &numrecs);
+
+        if ((result< 200 || result > 299) &&
+            (result != 0))
+        {
+            switch(result) {
+               case 400:
+                    Export_Failure( cutName.c_str(),
+                        (_("The Export FAILED ! 400 Error !")));
+                    return;
+               case 404:
+                   Export_Failure( cutName.c_str(),
+                       (_("The Export FAILED ! 404 Error !")));
+                   return;
+               default:
+                   Export_Failure( cutName.c_str(),
+                       (_("The Export FAILED ! Unknown  Error !")));
+                   return;
+            }
+        }
+    return;
+}
+
+bool RivendellDialog::Compute_Length(double * length)
+{
+
+    AudacityProject *p = GetActiveProject();
+
+    //
+    //         Figure out length allowing for Muted track(s)
+    //
+    if (mSaveSelection)
+    {
+	TrackList *tracks = p->GetTracks();
+	TrackListIterator iter1(tracks);
+	Track *tr = iter1.First();
+	double max = 0.0;
+	while (tr) 
+        {
+            if ( (tr->GetKind() == Track::Wave) &&
+               (tr->GetSelected()) &&
+               (!tr->GetMute() ) ) 
+            {
+                if (max < tr->GetEndTime())
+                {
+                    max= tr->GetEndTime();
+                }
+	    }
+	    tr = iter1.Next();
+	}
+	if (max < (p->GetSel1() - p->GetSel0()))
+	{
+            *length = max;
+	}
+	else
+	{
+            *length = p->GetSel1() - p->GetSel0();
+	}
+    }
+    else
+    {
+        TrackList *tracks = p->GetTracks();
+	TrackListIterator iter1(tracks);
+	Track *tr = iter1.First();
+	double max = 0.0;
+	while (tr) 
+        {
+            if ( (tr->GetKind() == Track::Wave) &&
+               (!tr->GetMute() ) ) 
+            {
+                if (max < tr->GetEndTime())
+                {
+                    max= tr->GetEndTime();
+                }
+	    }
+            tr = iter1.Next();
+	}
+	*length = max;
+    }
+
+    // Checking that there IS actually something to export (length not zero)...
+    if (length == 0)
+    {
+        wxString message;
+        wxString titlebox;
+        if(mSaveSelection)
+        {
+            message = _("There is no Audio Selected to be Exported \nCheck for Muted Track(s).");
+            titlebox = _("Unable to Export Selection to Rivendell");
+        }
+        else
+        {
+            message = _("There is no Audio to be Exported \nCheck for Muted Track(s).");
+            titlebox = _("Unable to Export to Rivendell");
+        }
+
+        wxMessageBox(message,
+            titlebox,
+            wxICON_ERROR|wxOK);
+        return false;
+    }
+
+    return true;
+}
+bool RivendellDialog::Check_Start_End_Date( wxString * sdate, wxString * edate)
+{
+    wxDateTime datetmp = wxDateTime::Now(); // temporary variable to check date.
+    wxDateTime datetmp2 = wxDateTime::Now(); // temp variable for checking dates
+    bool errorflag; // errorflag for messagebox if dates have improper length
+
+    if (((wxCheckBox *)FindWindow(wxID_EVERGREEN))->GetValue() == true) {
+        *sdate = _T("NULL");
+        *edate = _T("NULL");
+    } else {	
+        // Verify valid format for Start Date.
+        errorflag = false;
+        *sdate = ((wxTextCtrl*)FindWindow(wxID_STARTDATE))->GetValue();
+        if (sdate->length() == 8) { 		
+            datetmp.ParseFormat(*sdate, _T("%m/%d/%y"));
+            if (!datetmp.IsValid()) {
+                errorflag = true;	
+            }
+        } else if (sdate->length() == 10) {
+            datetmp.ParseFormat(*sdate, _T("%m/%d/%Y"));
+			if (!datetmp.IsValid()) {
+                errorflag = true;	
+            }
+        } else {
+            errorflag = true;
+		}
+
+        if (errorflag == true) {
+            wxMessageBox(_("Start Date Format Error (MM/DD/YYYY)"), _("Rivendell"), wxICON_ERROR|wxOK);
+            return false;
+            }
+        // Format sDate for the Database
+        *sdate = datetmp.Format(_T("\"%Y-%m-%d\""));
+
+        // Verify valid format for End Date.
+        errorflag = false;
+        *edate = ((wxTextCtrl*)FindWindow(wxID_ENDDATE))->GetValue();
+        if (edate->length() == 8) { 		
+            datetmp2.ParseFormat(*edate, _T("%m/%d/%y"));
+			if (!datetmp2.IsValid()) {
+                errorflag = true;	
+            }
+        } else if (edate->length() == 10) {
+            datetmp2.ParseFormat(*edate, _T("%m/%d/%Y"));
+			if (!datetmp2.IsValid()) {
+                errorflag = true;	
+            }
+        } else {
+            errorflag = true;
+        }
+
+        if (errorflag == true) {
+            wxMessageBox(_("End Date Format Error (MM/DD/YYYY)"), _("Rivendell"), wxICON_ERROR|wxOK);
+            return false;
+        }
+        // Format eDate for the Database
+        *edate = datetmp2.Format(_T("\"%Y-%m-%d\""));
+
+		// Verify Start Date not Greater than End Date
+	    if (datetmp >= datetmp2)  {
+            wxMessageBox(_("      Start Date Cannot be Greater Than or Equal To End Date"), _("Rivendell"), wxICON_ERROR|wxOK);
+            return false;
+	    }
+    }
+    return true;
+} 
+void RivendellDialog::Set_Year(wxString * year)
+{
+    wxDateTime datetmp = wxDateTime::Now(); // temporary variable to check date.
+
+    // Verify valid format for year.
+    datetmp.SetMonth(wxDateTime::Jan);
+    datetmp.SetDay(01);
+    *year = ((wxTextCtrl*)FindWindow(wxID_YEAR))->GetValue();
+    if (year->IsEmpty())
+    {
+	*year = _T("NULL");
+    } 
+    else 
+    {
+	datetmp.ParseFormat(*year, _T("%Y"));
+	*year = datetmp.Format(_T("\"%Y-%m-%d\""));
+    }
+
+    return;
+}
+
+bool RivendellDialog::Verify_Update( unsigned long  cartnum, unsigned long * cutnum,
+		const char host[], const char user[])
+{
+
+    struct rd_cart *cart=0;
+    struct rd_cut *cut=0;
+    unsigned numrecs;
+
+   wxString msg;
+
+   
+    int result = RD_ListCart( &cart,
+	host,
+	user,
+	"",
+	cartnum,
+	&numrecs);
+    if (result == 0)
+    {
+        int result2 = RD_ListCut( &cut,
+	    host,
+	    user,
+	    "",
+	    cartnum,
+	    *cutnum,
+	    &numrecs);
+        if (result2 == 0)    //WE Verify the update
+        {
+            int answer = wxMessageBox(_("WARNING! You are about to overwrite an existing file - are you sure?"), _("Rivendell"), wxYES_NO|wxICON_EXCLAMATION);
+            if (wxNO == answer) 
+                return false;
+            else
+                return true;
+        }
+        else
+        {
+            if (result2 == 404)
+            {                                        // CUT Doesn't Exist - Add it now
+                result2 = RD_AddCut( &cut,
+                    host,
+                    user,
+                    "",
+                    cartnum,
+                    &numrecs);
+	        if (result2 < 0)
+		{
+                    wxMessageBox(_("System Error Adding Cut! - Aborting"), 
+                        _("Rivendell"), wxICON_ERROR|wxOK);
+                    return false;
+		}
+                if ((result2< 200 || result2 > 299) &&
+       	   	    (result2 != 0))
+  		{
+    		    switch(result) {
+			case 404:
+			    wxMessageBox(_("Error: Unable to Add Cut! - UnAuthorized"), 
+                                _("Rivendell"), wxICON_ERROR|wxOK);
+                    	    return false;
+			break;
+			default:
+                            wxMessageBox(_("Unknown System Error - Aborting"), 
+                                _("Rivendell"), wxICON_ERROR|wxOK);
+                            return false;
+		    }
+                }
+                *cutnum = cut->cut_cut_number;
+	        return true;
+            }
+            else
+            {
+                wxMessageBox(_("Unknown System Error - Aborting"), 
+                    _("Rivendell"), wxICON_ERROR|wxOK);
+                return false;
+            }   
+        }
+    }
+    else   // Cart Doesn't Exist! Cannot do it this way!
+    {
+        wxMessageBox(_("Error: Clear Cart Number to Create Cart!"),
+            _("Rivendell"), wxICON_ERROR|wxOK);
+        return false;
+    }
+    //  Should not ever get here!
+    return true;
+}
