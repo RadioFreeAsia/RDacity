@@ -92,8 +92,12 @@ simplifies construction of menu items.
 #include "RivendellDialog.h"
 #include "RivendellConfig.h"
 #include "RivendellBrowseDialog.h"
+#include "RivendellLoginDialog.h"
+#include "RivendellUtils.h"
 
 #include "rivendell/rd_export.h"
+#include "rivendell/rd_createticket.h"
+#include "rivendell/rd_common.h"
 
 #include "MyProgressThread.h"
 
@@ -3628,10 +3632,10 @@ void AudacityProject::OnBrowseRivendellLibrary()
    Track *t;
 
    int DbVersion;
-   char rivHost[255];     //The Rivendell Host - Web API Call will user
+   char rivHost[255];     //The Rivendell Host - Web API Call 
    char rivUser[255]; // The Rivendell User to use for Web Call
+   char rivPass[255]="";  //The Rivendell User Password is BLANK 
    int result;
-
    if (!InitRivendellDatabase(&m))
       return;
 
@@ -3647,9 +3651,8 @@ void AudacityProject::OnBrowseRivendellLibrary()
    if (dlog.ShowModal() == wxID_OK) {
       // Cut import handling.
       selection = dlog.GetSelection(RD_BROWSE_CUT_NAME);
-      sscanf(selection.mb_str(), "%d_%03d", &cartId, &cutId);
+      sscanf(selection.mb_str(), "%d_%d", &cartId, &cutId);
       hold_selection.Printf(_T("%s.wav"),selection.c_str());
-
 	  RivendellCfg->ParseString("Cae", "AudioRoot", soundsDir);
 	  filename.Printf(_T("%s%s%s.wav"),
 		  wxString(soundsDir, wxConvLocal).c_str(),
@@ -3664,16 +3667,41 @@ void AudacityProject::OnBrowseRivendellLibrary()
 	  if (DbVersion >= 252)  /* This is Rivendell 2.0 */
 	  {
 		  /*   This is the beginning of 2.0 Export into Audacity code*/
+		  if (!RivendellCfg->ParseString("RivendellWebHost", "Rivhost", rivHost))
+		  {
+			  wxMessageBox(_("Export Failure - Incorrect 2.0 Configuration !"),
+				  _("Rivendell Web API"), wxICON_ERROR | wxOK);
+			  return;
+		  }
 
-		  RivendellCfg->ParseString("RivendellWebHost", "Rivhost", rivHost);
-		  RivendellCfg->ParseString("RivendellWebHost", "Rivuser", rivUser);
+		  wxString username = RivUtils->Get_System_User();
 
+		  strcpy(rivUser, username.c_str());
+		  
+		  char ticket[41] = "";
+		  char *ticket_ptr;
+		  ticket_ptr = ticket;
+
+		  if (!RivUtils->Get_Current_Ticket(ticket_ptr))
+		  {
+			  if (!RivUtils->Rivendell_Login(this, &ticket_ptr, rivUser))
+			 	  return;
+		  }
+		  else
+		  {
+			  if (!RivUtils->Validate_Ticket(rivHost, ticket))
+			  {
+				  if (!RivUtils->Rivendell_Login(this, &ticket_ptr, rivUser))
+					  return;
+			  }
+		  }
 		  // Progress Bar?
 		  MyProgressThread* myprogressthread = new MyProgressThread();
 
 		  result = RD_ExportCart(rivHost,
 			  rivUser,
-			  "",
+			  rivPass,
+			  ticket,
 			  cartId,
 			  cutId,
 			  0,
@@ -3692,7 +3720,8 @@ void AudacityProject::OnBrowseRivendellLibrary()
 		  delete myprogressthread;
 
 		  if (result < 0) {
-			  fprintf(stderr, "Something major went wrong in Web Call Result code = %d\n", result);
+			  wxMessageBox(_("Failure - Major Error during Web Call! Result Code < 0"),
+				  _("Rivendell Web API"), wxICON_ERROR | wxOK);
 			  return;
 		  }
 
@@ -3701,7 +3730,6 @@ void AudacityProject::OnBrowseRivendellLibrary()
 		  {
 			  switch (result) {
 			  case 404:
-				  fprintf(stderr, "ERROR:  No Such Cart/Cut Exists! \n");
 				  wxMessageBox(_("Error - No Such Cart/Cut Exists in the DataBase!"),
 					  _("Rivendell Web API"), wxICON_ERROR | wxOK);
 				  break;
@@ -3711,13 +3739,12 @@ void AudacityProject::OnBrowseRivendellLibrary()
 					  _("Rivendell Web API"), wxICON_ERROR | wxOK);
 				  break;
 			  case  403:
-				  fprintf(stderr, "Warning:  No Source Audio Found! \n");
-				  wxMessageBox(wxString::Format(_("Warning - No Source Audio Found! \n     Cart Number: %d_%03d"),
-					  cartId,cutId ), _("Rivendell Web API"), wxICON_WARNING | wxOK);
+				  wxMessageBox(_("ERROR: Invalid User Authentification! \n  "),
+					   _("Rivendell Web API"), wxICON_ERROR | wxOK);
 				  break;
 			  default:
-				  fprintf(stderr, "Unknown Server Error !");
-				  wxMessageBox(_("Error - Unknown Web Service Error !"),
+				  fprintf(stderr, "Unknown Server Error - Contact Help Desk !");
+				  wxMessageBox(_("Error - Unknown Web Service Error - Contact Help Desk!"),
 					  _("Rivendell Web API"), wxICON_ERROR | wxOK);
 			  }
 			  return;
@@ -3726,7 +3753,7 @@ void AudacityProject::OnBrowseRivendellLibrary()
 		  if (!::wxFileExists(filename))
 		  {
 			  mysql_close(&m);
-			  wxMessageBox(_("Aborting File Import - Could Not open file:  ") + filename);
+			  wxMessageBox(_("Error: Could Not Open Input File! \n "));
 			  return;
 		  }
 		  p = GetActiveProject();
@@ -3744,7 +3771,7 @@ void AudacityProject::OnBrowseRivendellLibrary()
 			if (!::wxFileExists(filename)) 
 			{
 				mysql_close(&m);
-				wxMessageBox(_(" Could Not open file:  ") + filename );
+				wxMessageBox(_("Please Contact Help Desk! \n Could Not open file:  ") + filename );
 				return;
 			}
 			p = GetActiveProject();
@@ -3789,7 +3816,7 @@ void AudacityProject::OnExportRivendellMix()
    status= mysql_query(&m,query.mb_str());
    if (status != 0) 
    {
-	   wxMessageBox(_("Unable to query database For Current Date \n Please check DB Connection or Try Again!\n"),
+	   wxMessageBox(_("Unable to query database For Current Date \n Please contact Help Desk or Try Again!\n"),
 		           _("Rivendell mySQL"), wxICON_ERROR||wxID_CANCEL);
 	   return ;
    }
@@ -3822,7 +3849,7 @@ void AudacityProject::OnExportRivendellSelection()
    status= mysql_query(&m,query.mb_str());
    if (status != 0) 
    {
-	   wxMessageBox(_("Unable to query database For Current Date \n Please check DB Connection or Try Again!\n"),
+	   wxMessageBox(_("Unable to query database For Current Date \n Please contact Help Desk or Try Again!\n"),
 		           _("Rivendell mySQL"), wxICON_ERROR||wxID_CANCEL);
 	   return ;
    }

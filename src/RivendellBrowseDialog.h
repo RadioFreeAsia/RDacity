@@ -30,8 +30,12 @@
 #define RIVENDELLBROWSEDIALOGH
 
 #include <wx/dialog.h>
-//#include <mysql/mysql.h>
+#ifdef _WIN32
 #include <mysql.h>
+#else
+#include <mysql/mysql.h>
+#endif
+
 #include <vector>
 
 #define RD_BROWSE_CART_TITLE 0

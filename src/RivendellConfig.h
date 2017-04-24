@@ -37,7 +37,11 @@
 //#define WINRIVCFG "C:\\Program Files\\SalemRadioLabs\\rivendell\\rd.ini"
 #define WINRIVCFG "c:\\Program Files (x86)\\Audacity_RFA\\Portable Settings\\rd.ini"
 #define POSIXRIVCFG "/etc/rdacity/rd.ini"
-
+#ifdef _WIN32
+#include <mysql.h>
+#else
+#include <mysql/mysql.h>
+#endif
 //
 //WINRRIVCFG is overlaid with the executabledir\PortableSetting dir if possible..
 

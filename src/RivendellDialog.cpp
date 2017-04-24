@@ -69,6 +69,8 @@
 #include "RivendellConfig.h"
 #include "RivendellBrowseDialog.h"
 #include "RivendellDialog.h"
+#include "RivendellLoginDialog.h"
+#include "RivendellUtils.h"
 
 #include "widgets/ProgressDialog.h"
 
@@ -276,6 +278,7 @@ RivendellDialog::RivendellDialog(wxWindow * parent, MYSQL *db, bool saveSelectio
    cartnumBoxSizer->Add(mTxtCartNumber, 0, wxALIGN_CENTER|wxALL, 5 );
    cartgroupGridSizer->Add(cartnumBoxSizer, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
+#ifndef USE_ONECUTPERCART
    wxBoxSizer *cutidBoxSizer = new wxBoxSizer( wxHORIZONTAL );
    wxStaticText *cutidText = new wxStaticText( this, -1, _("Cut Number:"), wxDefaultPosition, wxDefaultSize, 0 );
    cutidBoxSizer->Add(cutidText, 0, wxALIGN_CENTER|wxALL, 5 );
@@ -283,6 +286,7 @@ RivendellDialog::RivendellDialog(wxWindow * parent, MYSQL *db, bool saveSelectio
    wxTextCtrl *mTxtCutId = new wxTextCtrl( this, wxID_CUTNUMBER, wxT(""), wxDefaultPosition, wxSize(60,-1), 0 ,validator);
    cutidBoxSizer->Add(mTxtCutId, 0, wxALIGN_CENTER|wxALL, 5 );
    cartgroupGridSizer->Add(cutidBoxSizer, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+#endif
 
    wxButton *buttonText = new wxButton( this, wxID_BROWSE, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
    cartgroupGridSizer->Add(buttonText, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
@@ -406,7 +410,9 @@ void RivendellDialog::OnClear(wxCommandEvent & event)
 	((wxTextCtrl*)FindWindow(wxID_EVERGREEN))->Enable(false);
 	((wxTextCtrl*)FindWindow(wxID_ENDDATE))->SetValue(EDate);
     ((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->Clear();
-    ((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->Clear();
+#ifndef USE_ONECUTPERCART
+	((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->Clear();
+#endif
     ((wxTextCtrl*)FindWindow(wxID_TITLE))->Clear();
     ((wxTextCtrl*)FindWindow(wxID_ARTIST))->Clear();
     ((wxTextCtrl*)FindWindow(wxID_YEAR))->Clear();
@@ -419,10 +425,12 @@ void RivendellDialog::OnClear(wxCommandEvent & event)
 //  If Cart Number is edited - Cut Number must be blanked
 void RivendellDialog::OnCartNumberChange(wxCommandEvent & event)
 {
+#ifndef USE_ONECUTPERCART
     if (((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->IsModified())
     {
         ((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->Clear();
     }
+#endif
 }
 
 void RivendellDialog::OnEvergreenChange(wxCommandEvent & event)
@@ -521,8 +529,10 @@ void RivendellDialog::PopulateDialog(int cartId, int cutId)
       if (mysql_num_rows(result) != 1)
       {
          ((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->Clear();
+#ifndef USE_ONECUTPERCART
          ((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->Clear();
-         return;		
+#endif
+		 return;		
       }
       row = mysql_fetch_row(result);
 
@@ -550,16 +560,14 @@ void RivendellDialog::PopulateDialog(int cartId, int cutId)
       result = mysql_store_result(mDb);
       if (mysql_num_rows(result) != 1) {
          ((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->Clear();
+#ifndef USE_ONECUTPERCART
          ((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->Clear();
+#endif
          return;		
       }
       row = mysql_fetch_row(result);
 
       ((wxTextCtrl*)FindWindow(wxID_DESCRIPTION))->SetValue(wxString(row[0], wxConvUTF8));
-
-      //EvergreenOn.Printf(_("%s"), wxString(row[3],wxConvUTF8));
-//TODD was here
-      //EvergreenOn.Printf(_("%s"),(const char *)row[3]);   try something else?
 
       if (strcmp(row[3],"Y") == 0)  {
           ((wxCheckBox*)FindWindow(wxID_EVERGREEN))->SetValue(true);
@@ -569,7 +577,9 @@ void RivendellDialog::PopulateDialog(int cartId, int cutId)
           ((wxTextCtrl*)FindWindow(wxID_STARTDATE))->Enable(false);
           ((wxTextCtrl*)FindWindow(wxID_ENDDATE))->Enable(false);
           ((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->Enable(false); 
+#ifndef USE_ONECUTPERCART
           ((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->Enable(false); 
+#endif
       } else {
           ((wxCheckBox*)FindWindow(wxID_EVERGREEN))->SetValue(false);
           ((wxTextCtrl*)FindWindow(wxID_EVERGREEN))->Enable(false);
@@ -608,11 +618,14 @@ void RivendellDialog::PopulateDialog(int cartId, int cutId)
       cutNumber.Printf(_T("%03d"), cutId);
 
       ((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->SetValue(cartNumber);
-      ((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->SetValue(cutNumber);
-
+	  #ifndef USE_ONECUTPERCART
+        ((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->SetValue(cutNumber);
+	  #endif
 	} else {
         ((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->Clear();
-        ((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->Clear();
+	    #ifndef USE_ONECUTPERCART
+		  ((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->Clear();
+	    #endif
         ((wxCheckBox*)FindWindow(wxID_EVERGREEN))->SetValue(false);
         ((wxTextCtrl*)FindWindow(wxID_EVERGREEN))->Enable(false);
 	}
@@ -653,7 +666,7 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
     wxString	query;
     bool new_cart_flag = false;
     bool new_cut_flag = false;
-    unsigned long cartNewNumber;
+    unsigned long cartNewNumber = 0;
     unsigned long cutNewNumber = 1;
     wxString holdCutId;
     
@@ -764,6 +777,9 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
  
     if (!new_cart_flag)
     {
+#ifdef USE_ONECUTPERCART
+		cutNewNumber = 1;
+#else
         if (((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->GetValue().IsEmpty() ||
            (!((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->GetValue().ToULong(&cutNewNumber)) )
         //  NO Cut was Entered so generate one
@@ -802,6 +818,7 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
                 new_cut_flag = true;
             }
         }
+#endif
     }
     if ((int)cutNewNumber > 999) 
     {
@@ -1323,7 +1340,7 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
     int webResult;
     int result;
     int create_flag = 0;
-    unsigned long cartNewNumber;
+    unsigned long cartNewNumber = 0;
     unsigned long cutNewNumber = 1;
     wxString holdCutId;
     struct rd_cartimport *cartimport=0;
@@ -1331,6 +1348,10 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
     struct rd_cut *cuts=0;
     unsigned numrecs = 0;
     wxString cutName;
+
+    char rivTicket[41]="";
+    char rivPass[33] = "";
+
 
     AudacityProject *p = GetActiveProject();
  
@@ -1344,13 +1365,14 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
     }
     else
     {
+		#ifndef USE_ONECUTPERCART
         if (((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->GetValue().IsEmpty() ||
            (!((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->GetValue().ToULong(&cutNewNumber)) )
         {        // This has a Cart Number but NO Cut Number!
  	    wxMessageBox(_("Cart Number Must have A Cut Number"), _("Rivendell"), wxICON_ERROR|wxOK);
             return;
         }
-    
+	    #endif
     }
 
     if (!RivendellCfg->ParseString("RivendellWebHost", "Rivhost", rivHost))
@@ -1358,15 +1380,31 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
 	Export_Failure( "", (_("The Export FAILED !Incorrect 2.0 Configuration !")));
 	return;
     }
+	wxString username = RivUtils->Get_System_User();
 
-    // Git the Riv User
-    strcpy(rivUser, riv_getuser(mDb).c_str());
+	strcpy(rivUser, username.c_str());
 
+	char *ticket_ptr;
+	ticket_ptr = &rivTicket[0];
 
+	if (!RivUtils->Get_Current_Ticket(ticket_ptr))
+	{
+		if (!RivUtils->Rivendell_Login(this, &ticket_ptr, rivUser))
+			return;
+	}
+	else
+	{
+		if (!RivUtils->Validate_Ticket(rivHost, ticket_ptr))
+		{
+			if (!RivUtils->Rivendell_Login(this, &ticket_ptr, rivUser))
+				return;
+		}
+	}
+	
     if (cartNewNumber !=0)  // Check that they want to Overwrite
     {
         if (!Verify_Update(cartNewNumber, &cutNewNumber,
-		rivHost, rivUser ))
+		rivHost, rivUser, rivPass, rivTicket ))
 	    return;
     }
     cutName.Printf(_T("%06d_%03d"), (int)cartNewNumber, (int)cutNewNumber);
@@ -1421,8 +1459,11 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
     }
 	
     if (!Compute_Length(&length))
-        return;
+    {
+        wxMessageBox(_("Export Appears to have ZERO Length"), _("Rivendell"), wxICON_ERROR|wxOK);
 
+        return;
+    }
     // Sterilize content from GUI dialog before sending it to SQL.
     char rd_title[513*4];    // sized for mysql_real_escape_string() to be ((len * 2) * 4)+1  (for Unicode too).
     char rd_artist[513*4];
@@ -1452,25 +1493,24 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
     
     if (!Chk_Description(&rd_description[0]))
         return;
-    // Start Progress Bar In Another Thread
+    
+	// Start Progress Bar In Another Thread
     MyProgressThread* myprogressthread = new MyProgressThread();
-	  
-	//  In Rivendell 2.0 eventually this will need to do all Import Funtionality
-	// At Present - Carts/Cuts exists no matter what.
-
+	
     webResult = RD_ImportCart(&cartimport,
         rivHost,
-	rivUser,
-	"",
-	cartNewNumber,
-	cutNewNumber,
-	(unsigned)1,
-	0,
-	0,
-	0,
-        create_flag,
-        groupString.c_str(),   
-	fName,
+    	rivUser,
+	    rivPass,
+		rivTicket,
+		cartNewNumber,
+		cutNewNumber,
+		(unsigned)1,
+		0,
+		0,
+		0,
+		create_flag,
+		groupString.c_str(),   
+		fName,
         &numrecs);
 
 	// Kill the progress Thread
@@ -1494,9 +1534,8 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
 			(_("The Export FAILED ! No Cart/Cut Exists !")));
 			return;
 		case 403:
-		    Export_Failure( "",
-			(_("The Export FAILED ! Edit Permission Failure !")));
-		    return;
+			wxMessageBox(_("Please Try Again \n Authentification Credentials Failed \n"), _("Rivendell"), wxICON_ERROR | wxOK);
+			return;
 		case  401:
 		    Export_Failure( "",
 			(_("The Export FAILED ! Unauthorized or Cart out of Range")));
@@ -1507,89 +1546,91 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
 			return;
             }
 	}
-        if (numrecs == 1)
-        {
-            cartNewNumber = cartimport[numrecs - 1].cart_number;
-            cutNewNumber =  cartimport[numrecs - 1].cut_number;
-        }
-        cutName.Printf(_T("%06d_%03d"), (int)cartNewNumber, (int)cutNewNumber);
+	
+	if (numrecs == 1)
+    { 
+        cartNewNumber = cartimport[numrecs - 1].cart_number;
+        cutNewNumber =  cartimport[numrecs - 1].cut_number;
+    }
+    cutName.Printf(_T("%06d_%03d"), (int)cartNewNumber, (int)cutNewNumber);
         
-        //  Edit Cart Update
-        struct edit_cart_values edit_cart;
-        memset(&edit_cart,0,sizeof(struct edit_cart_values));
-        edit_cart.use_cart_title = 1;
-        strcpy( edit_cart.cart_title, rd_title);
-        edit_cart.use_cart_artist = 1;
-        strcpy( edit_cart.cart_artist,rd_artist);
-        edit_cart.use_cart_album = 1;
-        strcpy( edit_cart.cart_album, rd_album);
-        edit_cart.use_cart_label = 1;
-        strcpy( edit_cart.cart_label, rd_label);
-        edit_cart.use_cart_client = 1;
-        strcpy( edit_cart.cart_client, rd_client);
-        edit_cart.use_cart_agency = 1;
-        strcpy( edit_cart.cart_agency, rd_agency);
-
-        result= RD_EditCart(&carts,
-            edit_cart,
-            rivHost,
-            rivUser,
-            "",
-            cartNewNumber,
-            &numrecs);
-
-        if ((result< 200 || result > 299) &&
-            (result != 0))
-        {
-            switch(result) {
-                case 400:
-		    Export_Failure( cutName.c_str(),
-			(_("The Export FAILED ! 400 Error !")));
-                    return;
-               case 404:
-		   Export_Failure( cutName.c_str(),
-                       (_("The Export FAILED ! 404 Error !")));
+    //  Edit Cart Update
+    struct edit_cart_values edit_cart;
+    memset(&edit_cart,0,sizeof(struct edit_cart_values));
+    edit_cart.use_cart_title = 1;
+    strcpy( edit_cart.cart_title, rd_title);
+    edit_cart.use_cart_artist = 1;
+    strcpy( edit_cart.cart_artist,rd_artist);
+    edit_cart.use_cart_album = 1;
+    strcpy( edit_cart.cart_album, rd_album);
+    edit_cart.use_cart_label = 1;
+    strcpy( edit_cart.cart_label, rd_label);
+    edit_cart.use_cart_client = 1;
+    strcpy( edit_cart.cart_client, rd_client);
+    edit_cart.use_cart_agency = 1;
+    strcpy( edit_cart.cart_agency, rd_agency);
+	result= RD_EditCart(&carts,
+        edit_cart,
+        rivHost,
+        rivUser,
+        rivPass,
+	    rivTicket,
+        cartNewNumber,
+        &numrecs);
+	if ((result< 200 || result > 299) &&
+        (result != 0))
+    {
+        switch(result) 
+		{
+            case 400:
+		        Export_Failure( cutName.c_str(),
+			    (_("The Edit Cart FAILED ! 400 Error !")));
+                return;
+            case 404:
+		       Export_Failure( cutName.c_str(),
+                   (_("The Edit Cart FAILED ! 404 Error !")));
 	           return;
-               default:
-		   Export_Failure( cutName.c_str(),
-                       (_("The Export FAILED ! Unknown  Error !")));
-                   return;
-            }        
-        }
+            default:
+		       Export_Failure( cutName.c_str(),
+                   (_("The Edit Cart FAILED ! Unknown  Error !")));
+               return;
+        }        
+    }
         
-        //Edit Cut Update
-        struct edit_cut_values edit_cut;
-        memset(&edit_cut,0,sizeof(struct edit_cut_values));
-        edit_cut.use_cut_description=1;
-        strcpy(edit_cut.cut_description,rd_description);
-        
-        result= RD_EditCut(&cuts,
-            edit_cut,
-            rivHost,
-            rivUser,
-            "",
-            cartNewNumber,
-            cutNewNumber,
-            &numrecs);
-
-        if ((result< 200 || result > 299) &&
-            (result != 0))
-        {
-            switch(result) {
-               case 400:
-                    Export_Failure( cutName.c_str(),
-                        (_("The Export FAILED ! 400 Error !")));
-                    return;
-               case 404:
-                   Export_Failure( cutName.c_str(),
-                       (_("The Export FAILED ! 404 Error !")));
-                   return;
-               default:
-                   Export_Failure( cutName.c_str(),
-                       (_("The Export FAILED ! Unknown  Error !")));
-                   return;
-            }
+    //Edit Cut Update
+    struct edit_cut_values edit_cut;
+    memset(&edit_cut,0,sizeof(struct edit_cut_values));
+    edit_cut.use_cut_description=1;
+    strcpy(edit_cut.cut_description,rd_description);
+    
+    result= RD_EditCut(&cuts,
+        edit_cut,
+        rivHost,
+        rivUser,
+        rivPass,
+	    rivTicket,
+        cartNewNumber,
+        cutNewNumber,
+        &numrecs);
+	if ((result< 200 || result > 299) &&
+        (result != 0))
+    {
+        switch(result) 
+		{
+           case 400:
+                Export_Failure( cutName.c_str(),
+                    (_("The Export FAILED ! 400 Error !")));
+                return;
+           case 404:
+               Export_Failure( cutName.c_str(),
+                   (_("The Export FAILED ! 404 Error !")));
+               return;
+           default:
+               Export_Failure( cutName.c_str(),
+                   (_("The Export FAILED ! Unknown  Error !")));
+               return;
         }
+    }
     return;
 }
 
@@ -1762,7 +1803,8 @@ void RivendellDialog::Set_Year(wxString * year)
 }
 
 bool RivendellDialog::Verify_Update( unsigned long  cartnum, unsigned long * cutnum,
-		const char host[], const char user[])
+		const char host[], const char user[],
+		const char rivpass[], const char rivticket[])
 {
 
     struct rd_cart *cart=0;
@@ -1775,7 +1817,8 @@ bool RivendellDialog::Verify_Update( unsigned long  cartnum, unsigned long * cut
     int result = RD_ListCart( &cart,
 	host,
 	user,
-	"",
+	rivpass,
+	rivticket,
 	cartnum,
 	&numrecs);
     if (result == 0)
@@ -1783,7 +1826,8 @@ bool RivendellDialog::Verify_Update( unsigned long  cartnum, unsigned long * cut
         int result2 = RD_ListCut( &cut,
 	    host,
 	    user,
-	    "",
+	    rivpass,
+	    rivticket,
 	    cartnum,
 	    *cutnum,
 	    &numrecs);
@@ -1796,13 +1840,15 @@ bool RivendellDialog::Verify_Update( unsigned long  cartnum, unsigned long * cut
                 return true;
         }
         else
-        {
+        {            //This generates a new Cut Number for the CART
+	    #ifndef USE_ONECUTPERCART
             if (result2 == 404)
             {                                        // CUT Doesn't Exist - Add it now
                 result2 = RD_AddCut( &cut,
                     host,
                     user,
-                    "",
+                    rivpass,
+	            rivticket,
                     cartnum,
                     &numrecs);
 	        if (result2 < 0)
@@ -1835,7 +1881,11 @@ bool RivendellDialog::Verify_Update( unsigned long  cartnum, unsigned long * cut
                     _("Rivendell"), wxICON_ERROR|wxOK);
                 return false;
             }   
-        }
+		#else
+
+			*cutnum = 1;
+        #endif
+		}
     }
     else   // Cart Doesn't Exist! Cannot do it this way!
     {

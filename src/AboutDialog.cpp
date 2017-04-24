@@ -176,7 +176,7 @@ END_EVENT_TABLE()
 IMPLEMENT_CLASS(AboutDialog, wxDialog)
 
 AboutDialog::AboutDialog(wxWindow * parent)
-   :  wxDialog(parent, -1, _("About RDdacity"),
+   :  wxDialog(parent, -1, _("About Audacity"),
                wxDefaultPosition, wxDefaultSize,
                wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
 {
@@ -212,7 +212,7 @@ void AboutDialog::PopulateAudacityPage( ShuttleGui & S )
    CreateCreditsList();
 
    wxString par1Str = _(
-"Audacity, which this is a customized version of, is a free program written by a worldwide team of volunteer <a href=\"http://audacityteam.org/about/credits\">developers</a>. \
+"Audacity is a free program written by a worldwide team of volunteer <a href=\"http://audacityteam.org/about/credits\">developers</a>. \
 Audacity is <a href=\"http://audacityteam.org/download\">available</a> for Windows, Mac, and GNU/Linux (and other Unix-like systems).");
 
    // This trick here means that the English language version won't mention using
@@ -241,24 +241,19 @@ visit our <a href=\"http://forum.audacityteam.org/\">forum</a>.");
    }
    wxString localeStr = wxLocale::GetSystemEncodingName();
 
-   wxString creditStr =
-	   wxT("<html><head><META http-equiv=\"Content-Type\" content=\"text/html; charset=") +
-	   localeStr +
-	   wxT("\"></head>") +
-	   wxT("<body bgcolor=\"#ffffff\"><center>") +
-	   wxT("<h3>RDacity ") + wxString(AUDACITY_VERSION_STRING) + wxT("</h3>") +
-	   _("<b><br>Customized version of Audacity written for Rivendell Users </b><br><br>") +
-	   //_("A Free Digital Audio Editor<br>") +
-	   //wxT("<a href=\"http://audacity.sourceforge.net/\">http://audacity.sourceforge.net/</a>") +
-	   //wxT("</center><p>") + par1Str +
-	   wxT("<p>") + par2Str +
-	   wxT("<h3>") + _("Credits") + wxT("</h3>") +
-	   wxT("<p>") +
-
-	   wxT("<p><b>") + wxString::Format(_("RDacity - Audacity For Rivendell")) + wxT("</b><br>") +
-	   wxT("Todd Baker, Coding &amp; Design<br>")+
-	   	  
-	  translatorCredits +
+   wxString creditStr = 
+      wxT("<html><head><META http-equiv=\"Content-Type\" content=\"text/html; charset=") + 
+         localeStr + 
+         wxT("\"></head>") + 
+      wxT("<body bgcolor=\"#ffffff\"><center>") + 
+	  wxT("<h3>Audacity ") + wxString(AUDACITY_VERSION_STRING) + wxT("</h3>") +
+      _("<b><br>RFA Rivendell WIN 10 X-Platform Build Version 2.1.2.10</b><br><br>") +
+      _("A Free Digital Audio Editor<br>") + 
+	  wxT("<a href=\"http://audacity.sourceforge.net/\">http://audacity.sourceforge.net/</a>") +
+      wxT("</center><p>") + par1Str +
+      wxT("<p>") + par2Str +
+      wxT("<h3>") + _("Credits") + wxT("</h3>") +
+      wxT("<p>") + translatorCredits +
 
       wxT("<p><b>") + wxString::Format(_("Audacity Developers")) + wxT("</b><br>") +
       GetCreditsByRole(roleTeamDeveloper) +
@@ -291,12 +286,11 @@ visit our <a href=\"http://forum.audacityteam.org/\">forum</a>.");
 
 
    // New way to add to About box....
-   S.StartNotebookPage( wxT("RDacity") );
+   S.StartNotebookPage( wxT("Audacity") );
    S.StartVerticalLay(1);
 
    //v For now, change to AudacityLogoWithName via old-fashioned way, not Theme.
    logo = new wxBitmap((const char **) AudacityLogoWithName_xpm); //v
-
 
    // JKC: Resize to 50% of size.  Later we may use a smaller xpm as
    // our source, but this allows us to tweak the size - if we want to.

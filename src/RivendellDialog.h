@@ -31,7 +31,12 @@
 #define RIVENDELLDIALOGH
 
 #include <wx/dialog.h>
+#ifdef _WIN32
+#include <mysql.h>
+#else
 #include <mysql/mysql.h>
+#endif
+
 #include "Track.h"
 
 #define wxID_LENGTH                     1000
@@ -91,7 +96,8 @@ public:
     bool Check_Start_End_Date( wxString * sdate, wxString * edate);
     void Set_Year(wxString * year);
     bool Verify_Update( unsigned long  cartnum, unsigned long * cutnum,
-		const char host[], const char user[]);
+		const char host[], const char user[],
+		const char passwd[], const char rivticket[]);
 
 private:   
     wxChoice        *mChoiceGroup;

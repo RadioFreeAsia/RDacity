@@ -1,30 +1,30 @@
 /**********************************************************************
 
-  Rdacity: A Digital Audio Editor powered by Audacity(R)
+Rdacity: A Digital Audio Editor powered by Audacity(R)
 
-  RivendellConfig.cpp
+RivendellConfig.cpp
 
-  This effort was sponsored work by Radio Free Asia   
-	https://github.com/RadioFreeAsia/rdacity
-  John Penovich <penovichj@rfa.org> - cleanup
-  Henry Riverah
-  Federico Grau
-  Todd Baker  <bakert@rfa.org> <toadybarker@gmail.com>
+This effort was sponsored work by Radio Free Asia
+https://github.com/RadioFreeAsia/rdacity
+John Penovich <penovichj@rfa.org> - cleanup
+Henry Riverah
+Federico Grau
+Todd Baker  <bakert@rfa.org> <toadybarker@gmail.com>
 
-  (C) Copyright August 7, 2016 Todd Baker <bakert@rfa.org>
+(C) Copyright August 7, 2016 Todd Baker <bakert@rfa.org>
 
-     This program is free software; you can redistribute it and/or
-     modify it under the terms of the GNU General Public License version 2
-     as published by the free Software foundation.
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License version 2
+as published by the free Software foundation.
 
-     This program is distrbuted in the hope that it will be useful,
-     but WITHOUT ANY WARRANTY; without even the implied warranty of
-     MECHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-     General Public License for more details
+This program is distrbuted in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MECHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details
 
-     You should have received a copy of the GNU General Public
-     License along with this program, if not,  write to the Free Software
-     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA
+You should have received a copy of the GNU General Public
+License along with this program, if not,  write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA
 **********************************************************************/
 
 #include <stdio.h>
@@ -37,9 +37,17 @@
 
 #include <wx/filename.h>
 #include <wx/msgdlg.h>
+
+//toady added config stuff
+#include <wx/config.h>
 #include "PlatformCompatibility.h"
 
+#ifdef _WIN32
 #include <mysql.h>
+#else
+#include <mysql/mysql.h>
+#endif
+
 
 
 #ifndef _WIN32
@@ -49,6 +57,8 @@
 #include "Project.h"
 
 #include "RivendellConfig.h"
+
+#include "RivendellLoginDialog.h"
 
 RivendellConfig	*RivendellCfg;
 
@@ -258,7 +268,8 @@ wxString	riv_getuser(MYSQL *db)
    wxString query;
    MYSQL_RES *result;
 
-   #ifdef _WIN32
+   
+#ifdef _WIN32
    TCHAR tusername[255];
    DWORD tusername_bufsize = 255;
    bool rc;

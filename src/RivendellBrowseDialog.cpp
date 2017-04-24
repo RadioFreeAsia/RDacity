@@ -1,30 +1,16 @@
 /**********************************************************************
 
-  Rdacity: A Digital Audio Editor powered by Audacity(R)
+  Audacity: A Digital Audio Editor
 
   RivendellBrowseDialog.cpp
 
-  This effort was sponsored work by Radio Free Asia   
-	https://github.com/RadioFreeAsia/rdacity
+  This effort was sponsored work by Radio Free Asia http://techweb.rfa.org/ .
+  Pavel Domsa <pdomsa@seznam.cz> - initial author
   John Penovich <penovichj@rfa.org> - cleanup
-  Henry Riverah
-  Federico Grau
-  Todd Baker  <bakert@rfa.org> <toadybarker@gmail.com>
-
-  (C) Copyright August 7, 2016 Todd Baker <bakert@rfa.org>
-
-     This program is free software; you can redistribute it and/or
-     modify it under the terms of the GNU General Public License version 2
-     as published by the free Software foundation.
-
-     This program is distrbuted in the hope that it will be useful,
-     but WITHOUT ANY WARRANTY; without even the implied warranty of
-     MECHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-     General Public License for more details
-
-     You should have received a copy of the GNU General Public
-     License along with this program, if not,  write to the Free Software
-     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA
+  Henry Riverah <riverah@rfa.org> - cleanup
+  Federico Grau <grauf@rfa.org> - cleanup
+  Todd Baker  <bakert@rfa.org> - porting to MAC and upgrades
+  
 **********************************************************************/
 #include <fstream>
 #include <math.h>
@@ -314,7 +300,7 @@ bool RivendellBrowseDialog::ClearRivendellData()
 {
    //Check for mysql connection
    if (mysql_ping(mDb)) {
-      wxMessageBox(_("Connection lost, please try again.\n If this persists check Data Base Settings!"),
+      wxMessageBox(_("Connection lost, please try again.\n If this persists contact Helpdesk"),
 		           _("Rivendell mySQL"), wxICON_ERROR|wxOK);
       return false;
    }
