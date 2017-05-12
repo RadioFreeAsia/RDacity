@@ -28,7 +28,7 @@
 #define RIVENDELLLOGINDIALOGH
 
 #include <wx/wx.h>
-#include <rivendell\rd_createticket.h>
+#include <rivendell/rd_createticket.h>
 
 #define wxID_USERNAME                     1001
 #define wxID_PASSWORD                     1002
@@ -52,7 +52,7 @@ private:
 	wxButton* m_buttonLogin;
 	wxButton* m_buttonQuit;
 	wxMessageDialog *dlg;
-	struct rd_ticketinfo *created_ticket_info=0;
+	struct rd_ticketinfo *created_ticket_info;
 
 
 private:
