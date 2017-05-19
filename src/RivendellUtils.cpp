@@ -133,7 +133,7 @@ bool RivendellUtils::Get_Current_Ticket(char *returned_ticket)
 	wxString cur_tkt_exp;
 	wxString newticket;
 	wxString message;
-	wxConfig config(wxT("Radio Free Asia"), wxT("RadioFreeAsia"));
+	wxConfig config(wxT("Rivendell"), wxT("Radio Free Asia"));
 
 	//toady testing
 	//config.DeleteAll();
@@ -152,7 +152,7 @@ bool RivendellUtils::Get_Current_Ticket(char *returned_ticket)
 
 bool RivendellUtils::Rivendell_Login(wxWindow *caller,char *rivTicket[], const char rivUser[])
 {
-	wxConfig config(wxT("Radio Free Asia"), wxT("RadioFreeAsia"));
+	wxConfig config(wxT("Rivendell"), wxT("Radio Free Asia"));
 
 	rd_ticketinfo cur_tkt_info = { 0 };
 	RivendellLoginDialog login(caller, rivUser);

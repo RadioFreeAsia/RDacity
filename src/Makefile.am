@@ -206,6 +206,10 @@ audacity_SOURCES = \
 	RivendellBrowseDialog.cpp \
 	RivendellDialog.h \
 	RivendellDialog.cpp \
+        RivendellLoginDialog.cpp \
+        RivendellLoginDialog.h \
+	RivendellUtils.cpp \
+	RivendellUtils.h \
 	MyProgressThread.cpp \
 	MyProgressThread.h \
 	RingBuffer.cpp \

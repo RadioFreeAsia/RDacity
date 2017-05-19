@@ -83,7 +83,9 @@ public:
     void PopulateDialog(int cartId=-1, int cutId=-1);
     bool Chk_Ascii(const char * chk_string);
     void Export_Failure( const char *cutname, const wxString msg);
-    bool Get_Rivendell_Parameters(  int * format,  int * channel,  int * samplerate);
+	bool Get_Rivendell_1_Parameters(int * format, int * channel,	int * samplerate);
+	bool Get_Rivendell_2_Parameters(int * format, int * channel,
+	    	int * samplerate, const char rivHost[],	const char rivticket[]);
     bool Chk_Title(char * Title);
     bool Chk_Label(char * Label);
     bool Chk_Album(char * Album);

@@ -247,13 +247,13 @@ visit our <a href=\"http://forum.audacityteam.org/\">forum</a>.");
          wxT("\"></head>") + 
       wxT("<body bgcolor=\"#ffffff\"><center>") + 
 	  wxT("<h3>Audacity ") + wxString(AUDACITY_VERSION_STRING) + wxT("</h3>") +
-      _("<b><br>RFA Rivendell WIN 10 X-Platform Build Version 2.1.2.10</b><br><br>") +
+      _("<b><br>RFA Rivendell WIN 10 X-Platform Build Version 2.1.2.13</b><br><br>") +
       _("A Free Digital Audio Editor<br>") + 
 	  wxT("<a href=\"http://audacity.sourceforge.net/\">http://audacity.sourceforge.net/</a>") +
       wxT("</center><p>") + par1Str +
       wxT("<p>") + par2Str +
       wxT("<h3>") + _("Credits") + wxT("</h3>") +
-      wxT("<p>") + translatorCredits +
+      wxT("<p>") + translatorCredits + 
 
       wxT("<p><b>") + wxString::Format(_("Audacity Developers")) + wxT("</b><br>") +
       GetCreditsByRole(roleTeamDeveloper) +

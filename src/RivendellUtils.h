@@ -36,9 +36,10 @@ public:
 
 	wxString Get_System_User();
 	bool Validate_Ticket(const char rivhost[],
-                   		const char chk_ticket[]);
+                    		const char chk_ticket[]);
 	bool Get_Current_Ticket(char *returned_ticket);
 	bool Rivendell_Login(wxWindow * caller,char *ticket[], const char rivUser[]);
+
 };
 
 extern	RivendellUtils	*RivUtils;

@@ -81,6 +81,7 @@
 #include "rivendell/rd_listcart.h"
 #include "rivendell/rd_listcut.h"
 #include "rivendell/rd_addcut.h"
+#include "rivendell/rd_listsystemsettings.h"
 #include "Audacity.h"
 #include "Mix.h" //NEW
 
@@ -715,7 +716,7 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
     //
     // Get Rivendell Parameters
     //
-    if (!Get_Rivendell_Parameters( &format, &channels, &samplerate))
+    if (!Get_Rivendell_1_Parameters( &format, &channels, &samplerate))
         return;
 
     query.Printf(_T("select DEFAULT_LOW_CART,DEFAULT_HIGH_CART from GROUPS where NAME=\"%s\""), groupString.c_str());
@@ -1289,41 +1290,112 @@ bool RivendellDialog::Chk_Description( char * Description)
     return true;
 }
 
-bool RivendellDialog::Get_Rivendell_Parameters(  int * format,  int * channels,  int * samplerate)
+bool RivendellDialog::Get_Rivendell_1_Parameters(int * format,
+	int * channels,
+	int * samplerate)
 {
-    char str[255];
-    char *endPtr;
+	char str[255];
+	char *endPtr;
+	
+	if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultFormat", str))
+	{
+		wxMessageBox(_("Unable to find DefaultFormat in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
+		return false;
+	}
+	else
+	{
+		*format = strtol(str, &endPtr, 10);
+	}
 
-    if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultFormat", str)) 
-    {
-        wxMessageBox(_("Unable to find DefaultFormat in rd configuration"), _("Rivendell"), wxICON_ERROR|wxOK);
-        return false;
-    }
-    else
-    {
-            *format=strtol(str, &endPtr, 10);
-    }
+	if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultChannels", str))
+	{
+		wxMessageBox(_("Unable to find DefaultChannels in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
+		return false;
+	}
+	else
+	{
+		*channels = strtol(str, &endPtr, 10);
+	}
 
-    if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultChannels", str)) 
-    {
-        wxMessageBox(_("Unable to find DefaultChannels in rd configuration"), _("Rivendell"), wxICON_ERROR|wxOK);
-        return false;
-    }
-    else
-    {
-        *channels=strtol(str, &endPtr, 10);
-    }
+	if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultSampRate", str))
+	{
+		wxMessageBox(_("Unable to find DefaultSampRate in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
+		return false;
+	}
+	else
+	{
+		*samplerate = strtol(str, &endPtr, 10);
+	}
+	return true;
+}
 
-    if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultSampRate", str)) 
-    {
-        wxMessageBox(_("Unable to find DefaultSampRate in rd configuration"), _("Rivendell"), wxICON_ERROR|wxOK);
-        return false;
-    }
-    else
-    {
-        *samplerate=strtol(str, &endPtr, 10);
-    }
-    return true;
+bool RivendellDialog::Get_Rivendell_2_Parameters(int * format,
+	int * channels,
+	int * samplerate,
+	const char rivHost[],
+	const char ticket[])
+{
+	char str[255];
+	char *endPtr;
+	int webResult;
+	unsigned numrecs = 0;
+	struct rd_system_settings *system_settings = 0;
+
+	if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultFormat", str))
+	{
+		wxMessageBox(_("Unable to find DefaultFormat in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
+		return false;
+	}
+	else
+	{
+		*format = strtol(str, &endPtr, 10);
+	}
+
+	if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultChannels", str))
+	{
+		wxMessageBox(_("Unable to find DefaultChannels in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
+		return false;
+	}
+	else
+	{
+		*channels = strtol(str, &endPtr, 10);
+	}
+
+	webResult = RD_ListSystemSettings(&system_settings,
+		rivHost,
+		"",
+		"",
+		ticket,
+		&numrecs);
+	if (webResult < 0)
+	{
+		wxMessageBox(_("Unable to find DefaultSampRate in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
+		return false;
+	}
+
+	if ((webResult < 200 || webResult > 299) &&
+		(webResult != 0))
+	{
+		switch (webResult)
+		{
+		case 403:
+			wxMessageBox(_("Please Try Again \n Authentification Credentials Failed \n"), _("Rivendell"), wxICON_ERROR | wxOK);
+			return false;
+		default:
+			wxMessageBox(_("Error Attempting to Read Default Sample Rate from DB!\n"), _("Rivendell"), wxICON_ERROR | wxOK);
+			return false;
+		}
+	}
+
+	if (numrecs == 1)
+	{
+		*samplerate = system_settings[numrecs - 1].sample_rate;
+	}
+	else
+	{
+		return false;
+	}
+	return true;
 }
 
 void RivendellDialog::Process_Riv_2(wxString groupString)
@@ -1411,7 +1483,8 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
     //
     // Get Rivendell Parameters
     //
-    if (!Get_Rivendell_Parameters( &format, &channels, &samplerate))
+    if (!Get_Rivendell_2_Parameters( &format, &channels, 
+			&samplerate, rivHost, ticket_ptr))
         return;
 
     // Do the work required to export.

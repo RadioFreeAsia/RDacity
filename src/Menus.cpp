@@ -98,6 +98,7 @@ simplifies construction of menu items.
 #include "rivendell/rd_export.h"
 #include "rivendell/rd_createticket.h"
 #include "rivendell/rd_common.h"
+#include "rivendell/rd_listsystemsettings.h"
 
 #include "MyProgressThread.h"
 
@@ -3579,9 +3580,14 @@ bool AudacityProject::InitRivendellDatabase(MYSQL *_Db)
       wxMessageBox(_("Unable to init mySQL"), _("Rivendell mySQL"), wxICON_ERROR|wxOK);
       return false;
    }
-   if (!mysql_real_connect(_Db, host, login,	password, "Rivendell",	0, NULL, 0)) {
-      wxMessageBox(_("Unable to connect to Rivendell database"), _("Rivendell mySQL"), wxICON_ERROR|wxOK);
-      return false;
+   //Toady Changed to twixe
+   // Two NIC's sometimes fails! Only first time
+   if (!mysql_real_connect(_Db, host, login, password, "Rivendell", 0, NULL, 0))
+   {
+	   if (!mysql_real_connect(_Db, host, login, password, "Rivendell", 0, NULL, 0)) {
+		   wxMessageBox(_("Unable to connect to Rivendell database"), _("Rivendell mySQL"), wxICON_ERROR | wxOK);
+		   return false;
+	   }
    }
 
    // Query Rivendell db and check version against what this was developed for.
@@ -3630,12 +3636,16 @@ void AudacityProject::OnBrowseRivendellLibrary()
    wxString hold_selection;
    AudacityProject *p;
    Track *t;
-
+   int samplerate;
    int DbVersion;
    char rivHost[255];     //The Rivendell Host - Web API Call 
    char rivUser[255]; // The Rivendell User to use for Web Call
-   char rivPass[255]="";  //The Rivendell User Password is BLANK 
+   char rivPass[255]="";  
    int result;
+   unsigned numrecs = 0;
+   struct rd_system_settings *system_settings = 0;
+
+
    if (!InitRivendellDatabase(&m))
       return;
 
@@ -3695,6 +3705,42 @@ void AudacityProject::OnBrowseRivendellLibrary()
 					  return;
 			  }
 		  }
+
+		  result = RD_ListSystemSettings(&system_settings,
+			  rivHost,
+			  "",
+			  "",
+			  ticket,
+			  &numrecs);
+		  if (result < 0)
+		  {
+			  wxMessageBox(_("Unable to find DefaultSampRate in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
+			  return;
+		  }
+
+		  if ((result < 200 || result > 299) &&
+			  (result != 0))
+		  {
+			  switch (result)
+			  {
+			  case 403:
+				  wxMessageBox(_("Please Try Again \n Authentification Credentials Failed \n"), _("Rivendell"), wxICON_ERROR | wxOK);
+				  return;
+			  default:
+				  wxMessageBox(_("Error Attempting to Read Default Sample Rate from DB!\n"), _("Rivendell"), wxICON_ERROR | wxOK);
+				  return;
+			  }
+		  }
+
+		  if (numrecs == 1)
+		  {
+			  samplerate = system_settings->sample_rate;
+		  }
+		  else
+		  {
+			  return;
+		  }
+		  
 		  // Progress Bar?
 		  MyProgressThread* myprogressthread = new MyProgressThread();
 
@@ -3706,7 +3752,7 @@ void AudacityProject::OnBrowseRivendellLibrary()
 			  cutId,
 			  0,
 			  (unsigned)1,
-			  44100,      
+			  samplerate,      
 			  0,
 			  0,
 			  -1,
