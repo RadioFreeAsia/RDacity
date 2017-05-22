@@ -103,8 +103,8 @@ void RivendellLoginDialog::OnLogin(wxCommandEvent& event)
 		return;
 	}
 
-	if (username.empty() || password.empty()) {
-		wxMessageBox(wxT("Password cannot be Empty!"), wxT("Warning!"), wxICON_WARNING);
+	if (username.empty()) {
+		wxMessageBox(wxT("User cannot be Empty!"), wxT("Warning!"), wxICON_WARNING);
 		return;
 	}
 	else 
