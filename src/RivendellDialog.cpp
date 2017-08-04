@@ -1338,6 +1338,7 @@ bool RivendellDialog::Get_Rivendell_2_Parameters(int * format,
 	char str[255];
 	char *endPtr;
 	int webResult;
+	int result;
 	unsigned numrecs = 0;
 	struct rd_system_settings *system_settings = 0;
 
@@ -1420,7 +1421,7 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
     struct rd_cut *cuts=0;
     unsigned numrecs = 0;
     wxString cutName;
-
+	wxString msg;
     char rivTicket[41]="";
     char rivPass[33] = "";
 
@@ -1582,9 +1583,10 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
 		0,
 		0,
 		create_flag,
-		groupString.c_str(),   
+		groupString.c_str(),  
+		rd_title,
 		fName,
-        &numrecs);
+        	&numrecs);
 
 	// Kill the progress Thread
 	myprogressthread->Delete();
@@ -1603,8 +1605,9 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
 	    switch (webResult) 
             {
 		case 404:
+			msg.Printf("Export Failure: %s", cartimport[0].error_string);
 		    Export_Failure("",
-			(_("The Export FAILED ! No Cart/Cut Exists !")));
+			(_(msg)));
 			return;
 		case 403:
 			wxMessageBox(_("Please Try Again \n Authentification Credentials Failed \n"), _("Rivendell"), wxICON_ERROR | wxOK);
@@ -1657,15 +1660,15 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
 		{
             case 400:
 		        Export_Failure( cutName.c_str(),
-			    (_("The Edit Cart FAILED ! 400 Error !")));
+			    (_("Edit Cart Failure: 400 Error !")));
                 return;
             case 404:
 		       Export_Failure( cutName.c_str(),
-                   (_("The Edit Cart FAILED ! 404 Error !")));
+                   (_("Edit Cart Failure: Possible Duplicate Cart Error !")));
 	           return;
             default:
 		       Export_Failure( cutName.c_str(),
-                   (_("The Edit Cart FAILED ! Unknown  Error !")));
+                   (_("Edit Cart FAILED ! Unknown  Error !")));
                return;
         }        
     }
