@@ -22,10 +22,11 @@
 #endif
 
 #include "RivendellConfig.h"
-
+#include "RivendellUtils.h"
 #include "RivendellLoginDialog.h"
 #include "rivendell/rd_createticket.h"
-
+#include "rivendell/rd_getversion.h"
+#include "rivendell/rd_getuseragent.h"
 
 
 
@@ -96,6 +97,12 @@ void RivendellLoginDialog::OnLogin(wxCommandEvent& event)
 	unsigned numrecs;
 	int result;
 
+	// Set RDACITY_VERSION STRING
+	char RDACITY_VERSION_STRING[255] = RDACITY_VERSION;
+	//Add Rivendell C Library Info
+	strcat(RDACITY_VERSION_STRING, RD_GetUserAgent());
+	strcat(RDACITY_VERSION_STRING, RD_GetVersion());
+
 	if (!RivendellCfg->ParseString("RivendellWebHost", "Rivhost", rivHost))
 	{
 		wxMessageBox(wxT("The RDLogin FAILED !Incorrect RivHost Configuration !"), wxT("Error"), wxICON_WARNING);
@@ -113,6 +120,7 @@ void RivendellLoginDialog::OnLogin(wxCommandEvent& event)
 			rivHost,
 			username.c_str(),
 			password.c_str(),
+			RDACITY_VERSION_STRING,
 			&numrecs);
 
 		if (result == 0)

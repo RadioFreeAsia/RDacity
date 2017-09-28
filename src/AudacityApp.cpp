@@ -1277,8 +1277,8 @@ bool AudacityApp::OnInit()
 #ifdef _WIN32
    if (!RivendellCfg->LoadConfig(WINRIVCFG))
 	   return false;
-#else
-  if (!RivendellCfg->LoadConfig(POSIXRIVCFG))
+   else
+	   if (!RivendellCfg->LoadConfig(POSIXRIVCFG))
 		   return false;
 #endif
 #endif

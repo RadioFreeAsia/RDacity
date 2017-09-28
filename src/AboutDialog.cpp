@@ -40,7 +40,11 @@ hold information about one contributor to Audacity.
 #include "Internat.h"
 #include "ShuttleGui.h"
 #include "widgets/LinkingHtmlWindow.h"
-
+ 
+#include "RivendellUtils.h"
+#include "rivendell/rd_getversion.h"
+#include "rivendell/rd_getuseragent.h"
+#include "rivendell/rd_common.h"
 #include <wx/listimpl.cpp>
 WX_DEFINE_LIST(AboutDialogCreditItemsList);
 
@@ -226,6 +230,13 @@ visit our <a href=\"http://forum.audacityteam.org/\">forum</a>.");
 For help, view the tips and tricks on our <a href=\"http://wiki.audacityteam.org/\">wiki</a> or \
 visit our <a href=\"http://forum.audacityteam.org/\">forum</a>.");
 
+   // Set RDACITY_VERSION STRING
+   char RDACITY_VERSION_STRING[255] = RDACITY_VERSION;
+   //Add Rivendell C Library Info
+   strcat(RDACITY_VERSION_STRING, RD_GetUserAgent());
+   strcat(RDACITY_VERSION_STRING, RD_GetVersion());
+
+ 
    if( par2Str == par2StrUntranslated )
       par2Str.Replace( wxT(", in English,"), wxT("") );
 
@@ -247,7 +258,7 @@ visit our <a href=\"http://forum.audacityteam.org/\">forum</a>.");
          wxT("\"></head>") + 
       wxT("<body bgcolor=\"#ffffff\"><center>") + 
 	  wxT("<h3>Audacity ") + wxString(AUDACITY_VERSION_STRING) + wxT("</h3>") +
-      _("<b><br>RDacity X-Platform Build Version 2.1.2.17</b><br><br>") +
+      _("<b><br>") + wxString(RDACITY_VERSION_STRING) + _("</b><br><br>") +
       _("A Free Digital Audio Editor<br>") + 
 	  wxT("<a href=\"http://audacity.sourceforge.net/\">http://audacity.sourceforge.net/</a>") +
       wxT("</center><p>") + par1Str +

@@ -52,7 +52,7 @@ private:
 	wxButton* m_buttonLogin;
 	wxButton* m_buttonQuit;
 	wxMessageDialog *dlg;
-	struct rd_ticketinfo *created_ticket_info;
+	struct rd_ticketinfo *created_ticket_info=0;
 
 
 private:

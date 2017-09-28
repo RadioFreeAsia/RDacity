@@ -99,6 +99,8 @@ simplifies construction of menu items.
 #include "rivendell/rd_createticket.h"
 #include "rivendell/rd_common.h"
 #include "rivendell/rd_listsystemsettings.h"
+#include "rivendell/rd_getversion.h"
+#include "rivendell/rd_getuseragent.h"
 
 #include "MyProgressThread.h"
 
@@ -3555,10 +3557,7 @@ bool AudacityProject::InitRivendellDatabase(MYSQL *_Db)
    char login[50];
    char password[50];
    char host[50];
-   int version;
-   MYSQL_RES *result;
-   MYSQL_ROW row;
-   long int db_version;
+
    if (!RivendellCfg->ParseString("mySQL", "Loginname", login)) {
       wxMessageBox(_("Unable to find loginname in rd configuration"), _("Rivendell mySQL"), wxICON_ERROR|wxOK);
       return false;
@@ -3571,47 +3570,18 @@ bool AudacityProject::InitRivendellDatabase(MYSQL *_Db)
       wxMessageBox(_("Unable to find hostname in rd configuration"), _("Rivendell mySQL"), wxICON_ERROR|wxOK);
       return false;
    }
-   //database version
-   if (!RivendellCfg->ParseInt("mySQL", "Version", version)) {
-      wxMessageBox(_("Unable to find database version in rd configuration"), _("Rivendell mySQL"), wxICON_ERROR|wxOK);
-      return false;
-   }
    if (!mysql_init(_Db)) {
       wxMessageBox(_("Unable to init mySQL"), _("Rivendell mySQL"), wxICON_ERROR|wxOK);
       return false;
    }
-   //Toady Changed to twixe
-   // Two NIC's sometimes fails! Only first time
+   // HACK Todd Changed to try twice
+   // Two NIC's sometimes fails! Only first time though!
    if (!mysql_real_connect(_Db, host, login, password, "Rivendell", 0, NULL, 0))
    {
 	   if (!mysql_real_connect(_Db, host, login, password, "Rivendell", 0, NULL, 0)) {
 		   wxMessageBox(_("Unable to connect to Rivendell database"), _("Rivendell mySQL"), wxICON_ERROR | wxOK);
 		   return false;
 	   }
-   }
-
-   // Query Rivendell db and check version against what this was developed for.
-   if (mysql_query(_Db, "select DB from VERSION")) {
-      wxMessageBox(_("Unable to query Rivendell database version"), _("Rivendell mySQL"), wxICON_ERROR|wxOK);
-      return false;
-   }
-   result = mysql_store_result(_Db);
-
-   if (mysql_num_rows(result) != 1) {
-      wxMessageBox(_("Unable to query Rivendell database version"), _("Rivendell mySQL"), wxICON_ERROR|wxOK);
-      return false;
-   }
-
-
-   row = mysql_fetch_row(result);
-   db_version = strtol(row[0], NULL, 10);
-
-   if (db_version != version) {
-      wxMessageBox(wxString::Format(_("Error: Rivendell database version mismatch (A:%d/R:%d)"), 
-                                   // RD_VERSION_DATABASE, db_version),
-                                   version, db_version),
-                   _("Rivendell mySQL"), wxICON_ERROR|wxOK);
-      return false;
    }
 
    return true;
@@ -3637,7 +3607,6 @@ void AudacityProject::OnBrowseRivendellLibrary()
    AudacityProject *p;
    Track *t;
    int samplerate;
-   int DbVersion;
    char rivHost[255];     //The Rivendell Host - Web API Call 
    char rivUser[255]; // The Rivendell User to use for Web Call
    char rivPass[255]="";  
@@ -3656,6 +3625,11 @@ void AudacityProject::OnBrowseRivendellLibrary()
 #endif
 
    // Present the dialog.
+   // Set RDACITY_VERSION STRING
+   char RDACITY_VERSION_STRING[255] = RDACITY_VERSION;
+   //Add Rivendell C Library Info
+   strcat(RDACITY_VERSION_STRING, RD_GetUserAgent());
+   strcat(RDACITY_VERSION_STRING, RD_GetVersion());
 
    RivendellBrowseDialog dlog(this, &m);
    if (dlog.ShowModal() == wxID_OK) {
@@ -3672,79 +3646,75 @@ void AudacityProject::OnBrowseRivendellLibrary()
       RivendellCfg->SetCartOpened(cartId);
       RivendellCfg->SetCutOpened(cutId);
 
-	  RivendellCfg->ParseInt("MySQL", "Version", DbVersion);
-
-	  if (DbVersion >= 252)  /* This is Rivendell 2.0 */
+	  /*   This is the beginning of 2.0 Export into Audacity code*/
+	  if (!RivendellCfg->ParseString("RivendellWebHost", "Rivhost", rivHost))
 	  {
-		  /*   This is the beginning of 2.0 Export into Audacity code*/
-		  if (!RivendellCfg->ParseString("RivendellWebHost", "Rivhost", rivHost))
-		  {
-			  wxMessageBox(_("Export Failure - Incorrect 2.0 Configuration !"),
-				  _("Rivendell Web API"), wxICON_ERROR | wxOK);
-			  return;
-		  }
+		  wxMessageBox(_("Export Failure - Incorrect 2.0 Configuration !"),
+			  _("Rivendell Web API"), wxICON_ERROR | wxOK);
+		  return;
+	  }
 
-		  wxString username = RivUtils->Get_System_User();
+	  wxString username = RivUtils->Get_System_User();
 
-		  strcpy(rivUser, username.c_str());
-		  
-		  char ticket[41] = "";
-		  char *ticket_ptr;
-		  ticket_ptr = ticket;
+	  strcpy(rivUser, username.c_str());
+	  
+	  char ticket[41] = "";
+	  char *ticket_ptr;
+	  ticket_ptr = ticket;
 
-		  if (!RivUtils->Get_Current_Ticket(ticket_ptr))
+	  if (!RivUtils->Get_Current_Ticket(ticket_ptr))
+	  {
+		  if (!RivUtils->Rivendell_Login(this, &ticket_ptr, rivUser))
+		 	  return;
+	  }
+	  else
+	  {
+		  if (!RivUtils->Validate_Ticket(rivHost, ticket))
 		  {
 			  if (!RivUtils->Rivendell_Login(this, &ticket_ptr, rivUser))
-			 	  return;
-		  }
-		  else
-		  {
-			  if (!RivUtils->Validate_Ticket(rivHost, ticket))
-			  {
-				  if (!RivUtils->Rivendell_Login(this, &ticket_ptr, rivUser))
-					  return;
-			  }
-		  }
-
-		  result = RD_ListSystemSettings(&system_settings,
-			  rivHost,
-			  "",
-			  "",
-			  ticket,
-			  &numrecs);
-		  if (result < 0)
-		  {
-			  wxMessageBox(_("Unable to find DefaultSampRate in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
-			  return;
-		  }
-
-		  if ((result < 200 || result > 299) &&
-			  (result != 0))
-		  {
-			  switch (result)
-			  {
-			  case 403:
-				  wxMessageBox(_("Please Try Again \n Authentification Credentials Failed \n"), _("Rivendell"), wxICON_ERROR | wxOK);
 				  return;
-			  default:
-				  wxMessageBox(_("Error Attempting to Read Default Sample Rate from DB!\n"), _("Rivendell"), wxICON_ERROR | wxOK);
-				  return;
-			  }
 		  }
+	  }
+	  result = RD_ListSystemSettings(&system_settings,
+		  rivHost,
+		  "",
+		  "",
+		  ticket,
+		  RDACITY_VERSION_STRING,
+		  &numrecs);
+	  if (result < 0)
+      {
+		  wxMessageBox(_("Unable to find DefaultSampRate in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
+		  return;
+	  }
 
-		  if (numrecs == 1)
+	  if ((result < 200 || result > 299) &&
+		  (result != 0))
+	  {
+	      switch (result)
 		  {
+		      case 403:
+			      wxMessageBox(_("Please Try Again \n Authentification Credentials Failed \n"), _("Rivendell"), wxICON_ERROR | wxOK);
+			      return;
+		      default:
+			      wxMessageBox(_("Error Attempting to Read Default Sample Rate from DB!\n"), _("Rivendell"), wxICON_ERROR | wxOK);
+			      return;
+		  }
+	   }
+
+	   if (numrecs == 1)
+	   {
 			  samplerate = system_settings->sample_rate;
-		  }
-		  else
-		  {
-			  return;
-		  }
+		}
+		else
+		{
+		    return;
+		}
 		  
-		  // Progress Bar?
-		  MyProgressThread* myprogressthread = new MyProgressThread();
+		// Progress Bar?
+		MyProgressThread* myprogressthread = new MyProgressThread();
 
-		  result = RD_ExportCart(rivHost,
+		result = RD_ExportCart(rivHost,
 			  rivUser,
 			  rivPass,
 			  ticket,
@@ -3759,80 +3729,61 @@ void AudacityProject::OnBrowseRivendellLibrary()
 			  -1,
 			  0,
 			  0,
-			  filename);
+			  filename,
+			  RDACITY_VERSION_STRING);
 
-		  myprogressthread->Delete();
-		  myprogressthread->Wait();
-		  delete myprogressthread;
+		myprogressthread->Delete();
+		myprogressthread->Wait();
+		delete myprogressthread;
 
-		  if (result < 0) {
-			  wxMessageBox(_("Failure - Major Error during Web Call! Result Code < 0"),
+		if (result < 0) {
+		    wxMessageBox(_("Failure - Major Error during Web Call! Result Code < 0"),
 				  _("Rivendell Web API"), wxICON_ERROR | wxOK);
-			  return;
-		  }
+			return;
+		}
 
-		  if ((result < 200 || result > 299) &&
-			  (result != 0))
-		  {
-			  switch (result) {
-			  case 404:
-				  wxMessageBox(_("Error - No Such Cart/Cut Exists in the DataBase!"),
-					  _("Rivendell Web API"), wxICON_ERROR | wxOK);
-				  break;
-			  case  401:
-				  fprintf(stderr, "ERROR:  Unauthorized Or Cart out of Range! \n");
-				  wxMessageBox(_("Error - Unauthorized Or Cart out of Range!"),
-					  _("Rivendell Web API"), wxICON_ERROR | wxOK);
-				  break;
-			  case  403:
-				  wxMessageBox(_("ERROR: Invalid User Authentification! \n  "),
-					   _("Rivendell Web API"), wxICON_ERROR | wxOK);
-				  break;
-			  default:
-				  fprintf(stderr, "Unknown Server Error - Contact Help Desk !");
-				  wxMessageBox(_("Error - Unknown Web Service Error - Contact Help Desk!"),
-					  _("Rivendell Web API"), wxICON_ERROR | wxOK);
+		if ((result < 200 || result > 299) &&
+		    (result != 0))
+		 {
+		     switch (result) {
+			     case 404:
+				     wxMessageBox(_("Error - No Such Cart/Cut Exists in the DataBase!"),
+					     _("Rivendell Web API"), wxICON_ERROR | wxOK);
+				     break;
+				 case  401:
+				     fprintf(stderr, "ERROR:  Unauthorized Or Cart out of Range! \n");
+				     wxMessageBox(_("Error - Unauthorized Or Cart out of Range!"),
+					     _("Rivendell Web API"), wxICON_ERROR | wxOK);
+				     break;
+		         case  403:
+				      wxMessageBox(_("ERROR: Invalid User Authentification! \n  "),
+					       _("Rivendell Web API"), wxICON_ERROR | wxOK);
+				      break;
+			      default:
+				      fprintf(stderr, "Unknown Server Error - Contact Help Desk !");
+				      wxMessageBox(_("Error - Unknown Web Service Error - Contact Help Desk!"),
+					      _("Rivendell Web API"), wxICON_ERROR | wxOK);
 			  }
-			  return;
-		  }
+	    return;
+		}
 
-		  if (!::wxFileExists(filename))
-		  {
-			  mysql_close(&m);
-			  wxMessageBox(_("Error: Could Not Open Input File! \n "));
-			  return;
-		  }
-		  p = GetActiveProject();
-		  p->OpenFile(filename);
-	  }  // End if (Rivedell 2.0 COde)
-	  else
-	  {
-		  RivendellCfg->ParseString("Cae", "AudioRoot", soundsDir); 
-			filename.Printf(_T("%s%s%s.wav"), 
-						wxString(soundsDir, wxConvLocal).c_str(), 
-						directorySeparator.c_str(),
-						selection.c_str() );
-			
-			// TOADY !! This is taking forever in Ubuntu going back to  wxFileExists...
-			if (!::wxFileExists(filename)) 
-			{
-				mysql_close(&m);
-				wxMessageBox(_("Please Contact Help Desk! \n Could Not open file:  ") + filename );
-				return;
-			}
-			p = GetActiveProject();
-			p->OpenFile(filename);
-			/* End of old Rivendell 1.5.2 code */
-		}   
-	    TrackListIterator iter(p->GetTracks());
+    if (!::wxFileExists(filename))
+    {
+	    mysql_close(&m);
+		wxMessageBox(_("Error: Could Not Open Input File! \n "));
+		return;
+	}
+	p = GetActiveProject();
+	p->OpenFile(filename);
+	  
+	TrackListIterator iter(p->GetTracks());
 
-	    // Try to figure out if the user Pressed cancel on first open
-	    if (p->mFileName.Length() == 0) return;
+	// Try to figure out if the user Pressed cancel on first open
+	if (p->mFileName.Length() == 0) return;
+	t = iter.Last();
+	if (!t)  return;  // Iterator Is Invalid
 
-        t = iter.Last();
-	    if (!t)  return;  // Iterator Is Invalid
-
-	    t->SetName(dlog.GetSelection(RD_BROWSE_CART_TITLE));
+	t->SetName(dlog.GetSelection(RD_BROWSE_CART_TITLE));
 
 	}   //End If OK
 

@@ -42,12 +42,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA
 #include <wx/config.h>
 #include "PlatformCompatibility.h"
 
-#ifdef _WIN32
 #include <mysql.h>
-#else
-#include <mysql/mysql.h>
-#endif
-
 
 
 #ifndef _WIN32
@@ -257,7 +252,7 @@ int		RivendellConfig::GetCutOpened(void)
 	return m_CutOpened; 
 }
 
-wxString	riv_getuser(MYSQL *db)
+wxString	riv_getuser()
 {
    const wxString default_username = _T("user"); // Initialize to default Rivendell userid "user", in case unable to get credentials.
    //const wxString default_username = _T("guest"); 
@@ -265,9 +260,6 @@ wxString	riv_getuser(MYSQL *db)
       // the Rivendell database, no files will be returned on browse; while an error dialog is presented on export
    //const wxString default_username = _T("user");   //Rivendell 2.0 testing toady
    wxString username = default_username;
-   wxString query;
-   MYSQL_RES *result;
-
    
 #ifdef _WIN32
    TCHAR tusername[255];
@@ -289,16 +281,6 @@ wxString	riv_getuser(MYSQL *db)
       username = wxString(user_passwd->pw_name, wxConvUTF8);
    }
 #endif /* not _WINDOWS */
-
-   // Ensure the OS username is a valid Rivendell user.
-   query.Printf(_T("select LOGIN_NAME from USERS where LOGIN_NAME=\"%s\""), username.c_str());
-   // FIXME: should sterilize contents of riv_getusr() before sending to sql.
-   mysql_query(db, query.mb_str());
-   result = mysql_store_result(db);
-   if (mysql_num_rows(result) != 1) {
-      username = default_username;
-   }
-   mysql_free_result(result);
 
    return username;
 }

@@ -82,6 +82,8 @@
 #include "rivendell/rd_listcut.h"
 #include "rivendell/rd_addcut.h"
 #include "rivendell/rd_listsystemsettings.h"
+#include "rivendell/rd_getversion.h"
+#include "rivendell/rd_getuseragent.h"
 #include "Audacity.h"
 #include "Mix.h" //NEW
 
@@ -102,7 +104,7 @@ BEGIN_EVENT_TABLE(RivendellDialog, wxDialog)
 IMPLEMENT_CLASS(RivendellDialog, wxDialog)
 
 RivendellDialog::RivendellDialog(wxWindow * parent, MYSQL *db, bool saveSelection)
-:  wxDialog(parent, -1, _("Export to Rivendell, User: ") + riv_getuser(db),
+:  wxDialog(parent, -1, _("Export to Rivendell, User: ") + riv_getuser(),
 		wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxWANTS_CHARS)
 {
 	mDb = db;
@@ -237,7 +239,7 @@ RivendellDialog::RivendellDialog(wxWindow * parent, MYSQL *db, bool saveSelectio
 	// mysql query to get group names
   
    query.Printf(_T("select GROUP_NAME from USER_PERMS where USER_NAME = '%s' ORDER BY GROUP_NAME "), 
-                riv_getuser(mDb).c_str() );
+                riv_getuser().c_str() );
    // FIXME: should sterilize contents of riv_getusr() before sending to sql.
    mysql_query(mDb, query.mb_str());
    result = mysql_store_result(mDb);
@@ -310,10 +312,11 @@ RivendellDialog::RivendellDialog(wxWindow * parent, MYSQL *db, bool saveSelectio
    mTxtArtist->SetMaxLength(255);
    cartGridSizer->Add(mTxtArtist, 0, wxALIGN_CENTER|wxALL, 5 );
 
-	wxStaticText *yearText = new wxStaticText( this, -1, _("Year Released:"), wxDefaultPosition, wxDefaultSize, 0 );
+   wxStaticText *yearText = new wxStaticText( this, -1, _("Year Released:"), wxDefaultPosition, wxDefaultSize, 0 );
    cartGridSizer->Add(yearText, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
    wxTextCtrl *mTxtYear = new wxTextCtrl( this, wxID_YEAR, wxT(""), wxDefaultPosition, wxSize(40,-1), 0 ,validator);
+   mTxtYear->SetMaxLength(4);
    cartGridSizer->Add(mTxtYear, 0, wxALIGN_LEFT|wxALL, 5 );
 
    wxStaticText *albumText = new wxStaticText( this, -1, _("Album:"), wxDefaultPosition, wxDefaultSize, 0 );
@@ -651,27 +654,6 @@ void RivendellDialog::OnBrowse(wxCommandEvent & event)
 
 void RivendellDialog::OnOK(wxCommandEvent & event)
 {
-    AudacityProject *p = GetActiveProject();
-
-    //double length = mSaveSelection ? p->GetSel1() - p->GetSel0() : p->GetTracks()->GetEndTime();
-    double length = 0.0;    //Figure out the length below;
-    int format=0;
-    int channels=0;
-    int samplerate=0;
-    int cut_quantity;
-    char *endPtr;
-    char	soundsDir[255];  // FIXME: make this a wxString.
-    wxString fName;
-    MYSQL_RES *result;
-    MYSQL_ROW row;
-    wxString	query;
-    bool new_cart_flag = false;
-    bool new_cut_flag = false;
-    unsigned long cartNewNumber = 0;
-    unsigned long cutNewNumber = 1;
-    wxString holdCutId;
-    
-  
     //
     // Checks for required fields on the form.
     if (((wxTextCtrl*)FindWindow(wxID_TITLE))->GetValue().IsEmpty()) {
@@ -683,18 +665,6 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
       return;
     }
 	
-	 // Date checking (Start and End).
-	 /* FIXME: add checking for sane date values and possibly "TOD" "TFN"
-	 since right now only proper formatting is checked*/
-    wxString sDate;
-    wxString eDate;
-    if (!Check_Start_End_Date( &sDate, &eDate))
-        return;
-
-    // Set Year
-    wxString year;
-    Set_Year(&year);
-    
     // Checks for valid cart range.
     wxString groupString = ((wxChoice*)FindWindow(wxID_GROUP))->GetStringSelection();
 
@@ -704,443 +674,9 @@ void RivendellDialog::OnOK(wxCommandEvent & event)
         return;
 	}
 
-    // IF We are in 2.0 DB then Call NEW DB Code and exit ONOK
-    int DbVersion;
-    RivendellCfg->ParseInt("MySql", "Version", DbVersion);
-    if (DbVersion >= 252)
-    {
-        Process_Riv_2(groupString);
-        return;
-    } 
-
-    //
-    // Get Rivendell Parameters
-    //
-    if (!Get_Rivendell_1_Parameters( &format, &channels, &samplerate))
-        return;
-
-    query.Printf(_T("select DEFAULT_LOW_CART,DEFAULT_HIGH_CART from GROUPS where NAME=\"%s\""), groupString.c_str());
-    // FIXME: should sterilize contents of groupString before sending to sql.
-    mysql_query(mDb, query.mb_str());
-    result = mysql_store_result(mDb);
-    if (mysql_num_rows(result) != 1)
-        return;
-    row = mysql_fetch_row(result);
-
-    int cartLowLimit = strtol(row[0], &endPtr, 10);
-    int cartHighLimit = strtol(row[1], &endPtr, 10);
-    mysql_free_result(result);
-    
-    //  For Groups with no limits - must enter a CART Number
-    if ( ((cartLowLimit ==0) && (cartHighLimit == 0)) &&
-        ( ( ((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->GetValue().IsEmpty() ) ||
-        (!((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->GetValue().ToULong(&cartNewNumber)) ) )
-    {
-        wxMessageBox(_("  The Group has no Default Range - Please enter A Cart Number"));
-        return;
-    }
-    // Calculate cart number for new content.
-    if (((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->GetValue().IsEmpty() ||
-        !((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->GetValue().ToULong(&cartNewNumber))
-    {
-        new_cart_flag = true;
-        cut_quantity = 1;
-        cartNewNumber = cartLowLimit;
-        query.Printf(_T("select NUMBER from CART where (NUMBER>=%i)&&(NUMBER<=%i) order by NUMBER"), 
-            cartLowLimit, cartHighLimit);
-        mysql_query(mDb, query.mb_str());
-        result = mysql_store_result(mDb);
-
-        while ((row = mysql_fetch_row(result))) 
-        {
-            int i = strtol(row[0], &endPtr, 10);
-            if ((int)cartNewNumber != i) 
-            {
-                break; 
-            }
-            cartNewNumber++;
-        }
-    mysql_free_result(result);
-    }
-
-    if ((int)cartNewNumber <= 0) 
-    {
-        wxMessageBox(_("Invalid cart number !"), _("Rivendell"), wxICON_ERROR|wxOK);
-        return;
-    }
-
-    if ( ((int)cartNewNumber > cartHighLimit || (int)cartNewNumber < cartLowLimit) &&
-         ( ((cartLowLimit !=0) && (cartHighLimit != 0)) ) )
-    {
-        wxMessageBox(_("Group cart number exceeded"), _("Rivendell"), wxICON_ERROR|wxOK);
-        return;
-    }
- 
-    if (!new_cart_flag)
-    {
-#ifdef USE_ONECUTPERCART
-		cutNewNumber = 1;
-#else
-        if (((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->GetValue().IsEmpty() ||
-           (!((wxTextCtrl*)FindWindow(wxID_CUTNUMBER))->GetValue().ToULong(&cutNewNumber)) )
-        //  NO Cut was Entered so generate one
-        {
-            new_cut_flag = true;
-            query.Printf(_T(" select CUT_NAME from CUTS where CART_NUMBER= %li order by CUT_NAME"),cartNewNumber);
-            mysql_query(mDb,query.mb_str());
-            result = mysql_store_result(mDb);
-            if (mysql_num_rows(result) != 0)
-            {
-                unsigned long i = 1;
-                while ((row = mysql_fetch_row(result))) 
-                {
-                    holdCutId.Printf(_T("%s"),row[0]);
-                    unsigned long chknewcutnum = strtol(holdCutId.Right(3), &endPtr, 10);
-                    if (chknewcutnum == i)
-                    {
-                        i++;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-                cutNewNumber = i; 
-            }
-            mysql_free_result(result);
-        }  // End of new cut generation
-        else   /// Cut Number Entered
-        {
-            query.Printf(_T(" select CUT_NAME from CUTS where CART_NUMBER= %li order by CUT_NAME"),cartNewNumber);
-            mysql_query(mDb,query.mb_str());
-            result = mysql_store_result(mDb);
-            if (mysql_num_rows(result) == 0)
-            {
-                new_cut_flag = true;
-            }
-        }
-#endif
-    }
-    if ((int)cutNewNumber > 999) 
-    {
-        wxMessageBox(_("cut number exceeded"), _("Rivendell"), wxICON_ERROR|wxOK);
-        return;
-    }
-
-    wxString hold_Title=((wxTextCtrl*)FindWindow(wxID_TITLE))->GetValue().wx_str();
- 
-    if (!Chk_Ascii(WX2UNI(hold_Title)))
-    {
- 	wxMessageBox(_("Error: Illegal Character(s) detected in Title!\nCheck For Spaces at Beginning"),
- 		_("Rivendell"), wxICON_ERROR|wxOK);
-        return;
-    }
- 
-    // Adding check for Duplicate Cart Title when RD Flag is set to NO Duplicate CART TITLES
-    //
-    char chk_title[513];
-    wxString AllowDupTitles;
-   
-    mysql_real_escape_string(mDb, 
-        chk_title, 
-	WX2UNI(hold_Title),
-	strlen(WX2UNI(hold_Title)));
- 
-    query.Printf(_T("select DUP_CART_TITLES from SYSTEM"));
-    mysql_query(mDb, query.mb_str());
-    result = mysql_store_result(mDb);
-    row = mysql_fetch_row(result);
- 
-    AllowDupTitles.Printf(_T("%s"),row[0]);
- 
-    if (strcmp(row[0],"N") == 0)
-    {
-        // Check to make sure title does not exist
-        mysql_free_result(result);
- 	query.Printf(_("select NUMBER from CART where ((NUMBER != %i) && (TITLE =\"%s\"))"),
-            (int)cartNewNumber,wxString(chk_title,wxConvUTF8).wx_str());
-  
-	mysql_query(mDb,WX2UNI(query));
-	result = mysql_store_result(mDb);
-	if (mysql_num_rows(result) != 0)
-	{
-            wxMessageBox(_("Error: CART TITLE Already Exists in Database\n Duplicates Not Allowed"),
-	        _("Rivendell"), wxICON_ERROR|wxOK);
-	    return;
-	}
-    }
- 
-    // Add Validity column values. If Date fields not null the validity is ConditionallyValid (1)
-    // for Both CART and CUTS. If CUTS is EVERGREEN, then CUTS_VALIDITY is Always Valid (2) 
-    // and CART_VALIDITY = 3 (EVERGREEN).
- 
-    int cart_validity = 2;
-    int cut_validity = 2;
-	
-    if (((wxCheckBox *)FindWindow(wxID_EVERGREEN))->GetValue() == true) 
-    {
-        cart_validity = 3;
-	cut_validity = 2;
-    }
-
-    if (( sDate != _T("NULL")) && (eDate != _T("NULL")))
-    {
-        cart_validity = 1;
-	cut_validity = 1;
-    }
-	
-    if (!Compute_Length(&length))
-        return;
-
-    // Sterilize content from GUI dialog before sending it to SQL.
-    char rd_title[513*4];    // sized for mysql_real_escape_string() to be ((len * 2) * 4)+1  (for Unicode too).
-    char rd_artist[513*4];
-    char rd_album[513*4];
-    char rd_label[129*4];
-    char rd_client[129*4];
-    char rd_agency[129*4];
-    char rd_description[129*4];
-
-    //  The Title has already been checked for Illegal Characters...
-    mysql_real_escape_string(mDb, 
-        rd_title, 
-        WX2UNI(hold_Title),
-        strlen(WX2UNI(hold_Title)));
-
-    if (!Chk_Artist(&rd_artist[0]))
-       return;
-
-    if (!Chk_Album(&rd_album[0]))
-        return;
-
-    if (!Chk_Label(&rd_label[0]))
-        return;
-
-    if (!Chk_Client(&rd_client[0]))
-        return;
-
-    if (!Chk_Agency(&rd_agency[0]))
-        return;
-    
-    if (!Chk_Description(&rd_description[0]))
-        return;
-
-    wxString cutName; 
-    cutName.Printf(_T("%06d_%03d"), (int)cartNewNumber, (int)cutNewNumber);
-    //
-    // Insert or update cart meta data into Rivendell database.
-    if (new_cart_flag == true)
-    {
-        query.Printf(_T("insert into CART \
-            set NUMBER=%d,TYPE=%d,GROUP_NAME=\"%s\",TITLE=\"%s\",\
-            YEAR=%s,ARTIST=\"%s\",ALBUM=\"%s\",\
-            LABEL=\"%s\",CLIENT=\"%s\",AGENCY=\"%s\",\
-            FORCED_LENGTH=%d,AVERAGE_LENGTH=%d,AVERAGE_SEGUE_LENGTH=%d,\
-	    VALIDITY=%d,CUT_QUANTITY=1"),
-            (int)cartNewNumber,1, groupString.c_str(),
-            wxString(rd_title, wxConvUTF8).wx_str(),
-            year.c_str(),
-            wxString(rd_artist, wxConvUTF8).wx_str(),
-            wxString(rd_album,  wxConvUTF8).wx_str(),
-            wxString(rd_label,  wxConvUTF8).wx_str(),
-            wxString(rd_client, wxConvUTF8).wx_str(),
-            wxString(rd_agency, wxConvUTF8).wx_str(),
-            (int)(length*1000.),
-            (int)(length*1000.),
-            (int)(length*1000.),
-	    (int)cart_validity);
-        new_cut_flag=true;
-    } 
-    else 
-    {
-        query.Printf(_T("select CUT_QUANTITY from CART where NUMBER = %d"),
-            (int)cartNewNumber);
-        mysql_query(mDb, query.mb_str());
-        result = mysql_store_result(mDb);
-        if (mysql_num_rows(result))
-        {
-            row = mysql_fetch_row(result);
-            cut_quantity = strtol(row[0], &endPtr, 10);
-        }
-        else
-        {
-            cut_quantity = 0;
-        }
-        mysql_free_result(result);
-        
-        // Figure out if NEW Cut
-        if (new_cut_flag != true)
-        {
-            query.Printf(_T("select CUT_NAME from CUTS where CUT_NAME=\"%s\""), cutName.c_str());
-            mysql_query(mDb, query.mb_str());
-            result = mysql_store_result(mDb);
-            if (mysql_num_rows(result)) 
-            {
-                // Updating existing content... confirm from the user that the content should be replaced.
-                int answer = wxMessageBox(_("WARNING! You are about to overwrite an existing file - are you sure?"), _("Rivendell"), wxYES_NO|wxICON_EXCLAMATION);
-                if (wxNO == answer) 
-                {
-                    return;
-                }
-                // else wxYES, continue procesing and overwriting.
-            }
-            else
-            {
-                new_cut_flag = true;
-                cut_quantity++;
-            }
-            mysql_free_result(result);
-        }
-        query.Printf(_T("update CART \
-            set TYPE=%d,GROUP_NAME=\"%s\",TITLE=\"%s\",\
-            YEAR=%s,ARTIST=\"%s\",ALBUM=\"%s\",\
-            LABEL=\"%s\",CLIENT=\"%s\",AGENCY=\"%s\",\
-            FORCED_LENGTH=%d,AVERAGE_LENGTH=%d,AVERAGE_SEGUE_LENGTH=%d,\
-            VALIDITY=%d,CUT_QUANTITY=%d \
-            where NUMBER=%d"),
-            1, groupString.c_str(),
-            wxString(rd_title, wxConvUTF8).wx_str(),
-            year.c_str(),
-	    wxString(rd_artist, wxConvUTF8).wx_str(),
-            wxString(rd_album,  wxConvUTF8).wx_str(),
-            wxString(rd_label,  wxConvUTF8).wx_str(),
-            wxString(rd_client, wxConvUTF8).wx_str(),
-            wxString(rd_agency, wxConvUTF8).wx_str(),
-            (int)(length*1000.),
-            (int)(length*1000.),
-            (int)(length*1000.),
-            (int)cart_validity,
-            (int)cut_quantity,
-            (int)cartNewNumber);
-    
-    }
-    mysql_query(mDb, WX2UNI(query));
-
-    char	hostName[100];
-    gethostname(hostName, 99);
-
-    char	timeStr[200];
- 
-    query.Printf(_T("select SYSDATE()"));
-    mysql_query(mDb, query.mb_str());
-    result = mysql_store_result(mDb);
-    if (!mysql_num_rows(result))
-    {                    // Should never happen but use local time if it does
-	time_t t;
-	struct tm *tmp;
-	t = time(NULL);
-	tmp = localtime(&t);
-	strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", tmp);
-    }
-    else
-    {
-	row = mysql_fetch_row(result);
-	strcpy(timeStr,row[0]);
-    }
- 
-    // Insert or update cut meta data into Rivendell database.
-    wxString tmpString;
-    if (new_cut_flag == true)
-    {
-        // FIXME: this only works for PCM16!
-        query.Printf(_T("insert into CUTS set CUT_NAME=\"%s\",\
-            CART_NUMBER=\"%d\",DESCRIPTION=\"%s\",LENGTH=%d,\
-            CODING_FORMAT=%d,SAMPLE_RATE=%d,BIT_RATE=%d,CHANNELS=%d,\
-            ORIGIN_NAME=\"%s\",ORIGIN_DATETIME=\"%s\",\
-            START_POINT=%d,END_POINT=%d,VALIDITY=%d"),
-            cutName.c_str(),
-            (int)cartNewNumber,
-            wxString(rd_description, wxConvUTF8).wx_str(),
-            (int)(length*1000.),
-            0,samplerate,0,channels,
-            wxString(hostName, wxConvLocal).c_str(),
-            wxString(timeStr, wxConvLocal).c_str(),
-            0,(int)(length*1000.),
-	    (int)cut_validity);
-	      
-	tmpString.Printf(_T(",START_DATETIME=%s"),sDate.c_str());
-	query += tmpString;
-        tmpString.Printf(_T(",END_DATETIME=%s"),eDate.c_str());
-	query += tmpString; 
-    } 
-    else 
-    {
-        query.Printf(_T("update CUTS set CART_NUMBER=%d,DESCRIPTION=\"%s\",\
-            LENGTH=%d,CODING_FORMAT=%d,SAMPLE_RATE=%d,BIT_RATE=%d,\
-            CHANNELS=%d,ORIGIN_NAME=\"%s\",ORIGIN_DATETIME=\"%s\",\
-	    SUN=\"Y\",MON=\"Y\",TUE=\"Y\",WED=\"Y\",THU=\"Y\",FRI=\"Y\",SAT=\"Y\",\
-            FADEUP_POINT=-1, FADEDOWN_POINT=-1, \
-	    HOOK_START_POINT=-1, HOOK_END_POINT=-1, \
-	    TALK_START_POINT=-1, TALK_END_POINT=-1, \
-	    SEGUE_START_POINT=-1, SEGUE_END_POINT=-1,\
-            START_POINT=%d,END_POINT=%d,VALIDITY=%d"),
-            (int)cartNewNumber,
-            wxString(rd_description, wxConvUTF8).wx_str(),
-            (int)(length*1000.),
-            0,samplerate,0,channels,
-            wxString(hostName, wxConvLocal).c_str(),
-            wxString(timeStr, wxConvLocal).c_str(),
-            0,(int)(length*1000.),
-	    (int)cut_validity);
-        tmpString.Printf(_T(",START_DATETIME=%s"),sDate.c_str());
-	query += tmpString;
-	tmpString.Printf(_T(",END_DATETIME=%s"),eDate.c_str());
-	query += tmpString;
-        tmpString.Printf(_T(" where CUT_NAME=\"%s\""), cutName.c_str());
-	query += tmpString;
-    }
-    	
-    // FIXME: need to sterilize description ...
-    //mysql_query(mDb, query.mb_str());
-    mysql_query(mDb, WX2UNI(query));
-        
-    // Do the work required to export.
-
-    int exportstatus = 0; 
-    ExportPlugin * e;
-    e = New_ExportPCM();
- 
-    // Retrieve destination sound dir from the configuration file.
-    if (!RivendellCfg->ParseString("Cae", "AudioRoot", soundsDir)) 
-    {
-        wxMessageBox(_("Unable to find AudioRoot in rd configuration"), _("Rivendell"), wxICON_ERROR|wxOK);
-        return;
-    }
-    #ifdef _WIN32
-        fName.Printf(_T("%s\\%s.wav"), wxString(soundsDir, wxConvLocal).c_str() ,cutName.c_str());
-    #else
-        fName.Printf(_T("%s%s.wav"), wxString(soundsDir, wxConvLocal).c_str(), cutName.c_str());
-    #endif
-    
-    // Create a mixerspec object to be used on the export below.
-    MixerSpec * ms;
-    ms = new MixerSpec( 1, 2 );
-       
-    p->AS_SetRate(samplerate); 
-    if (mSaveSelection)
-    {
-      exportstatus = e->Export(p, channels, fName, true, p->GetSel0(), p->GetSel1(), ms, 0,format);
-      //exportstatus = e->Export(p, channels, fName, true, p->GetSel0(), p->GetSel1(), ms, false,1);
-    }
-    else
-    {
-      exportstatus = e->Export(p, channels, fName, false, 0.f, p->GetTracks()->GetEndTime(), ms, 0,format);
-      //exportstatus = e->Export(p, channels, fName, false, 0.f, p->GetTracks()->GetEndTime(), ms, false,1);
-    }
-    p->AS_SetRate(samplerate);
-    EndModal(wxID_OK);
-
-// Need to check exportstatus and if failed turn all days OFF
-// Change Validity to Zero, Length to Zero
-    
-    if (exportstatus != 1)  
-    {
-	Export_Failure( cutName.c_str(),
-	    (_("The Export appears to have FAILED !!!")));
+	Process_Riv_Export(groupString);
 	return;
-    }
-	
-    delete ms;
+    
 }
 
 
@@ -1161,22 +697,20 @@ bool RivendellDialog::Chk_Ascii(const char* chk_string)
     }
     return true;
 }	
-
 void RivendellDialog::Export_Failure(const char * cutname, const wxString msg)
 {
-    wxString query;
+	wxString query;
 
-    if (strlen(cutname) > 0 )
-    {
-        query.Printf("update CUTS set LENGTH = 0, VALIDITY=0, SUN=\"N\",MON=\"N\",TUE=\"N\",WED=\"N\", \
-	    THU=\"N\",FRI=\"N\",SAT=\"N\" where CUT_NAME = \"%s\"", cutname);
-        mysql_query(mDb, query.mb_str());
-    }
+	if (strlen(cutname) > 0)
+	{
+		query.Printf("update CUTS set LENGTH = 0, VALIDITY=0, SUN=\"N\",MON=\"N\",TUE=\"N\",WED=\"N\", \
+					 	    THU=\"N\",FRI=\"N\",SAT=\"N\" where CUT_NAME = \"%s\"", cutname);
+		mysql_query(mDb, query.mb_str());
+	}
 
-    wxMessageBox(_(msg), _("Rivendell"), wxICON_ERROR | wxOK);
-    return;
+	wxMessageBox(_(msg), _("Rivendell"), wxICON_ERROR | wxOK);
+	return;
 }
-
 bool RivendellDialog::Chk_Title(char * Title)
 {
 
@@ -1187,10 +721,8 @@ bool RivendellDialog::Chk_Title(char * Title)
             _("Rivendell"), wxICON_ERROR|wxOK);
         return false;
     }
-    mysql_real_escape_string(mDb,
-        Title,
-        WX2UNI(hold_Title),
-        strlen(WX2UNI(hold_Title)));
+	strcpy(Title, WX2UNI(hold_Title));
+	
     return true;
 }
 bool RivendellDialog::Chk_Artist(char * Artist)
@@ -1203,10 +735,8 @@ bool RivendellDialog::Chk_Artist(char * Artist)
             _("Rivendell"), wxICON_ERROR|wxOK);
         return false;
     }
-    mysql_real_escape_string(mDb,
-        Artist,
-        WX2UNI(hold_Artist),
-        strlen(WX2UNI(hold_Artist)));
+	strcpy(Artist, WX2UNI(hold_Artist));
+
     return true;
 }
 
@@ -1219,10 +749,8 @@ bool RivendellDialog::Chk_Album(char * Album)
             _("Rivendell"), wxICON_ERROR|wxOK);
         return false;
     }
-    mysql_real_escape_string(mDb, 
-        Album, 
-        WX2UNI(hold_Album),
-        strlen(WX2UNI(hold_Album)));
+	strcpy(Album, WX2UNI(hold_Album));
+
     return true;
 }
 
@@ -1235,10 +763,8 @@ bool RivendellDialog::Chk_Label(char * Label)
             _("Rivendell"), wxICON_ERROR|wxOK);
         return false;
     }
-    mysql_real_escape_string(mDb, 
-        Label, 
-        WX2UNI(hold_Label),
-        strlen(WX2UNI(hold_Label)));
+	strcpy(Label, WX2UNI(hold_Label));
+
     return true;
 }
 
@@ -1251,10 +777,8 @@ bool RivendellDialog::Chk_Client( char * Client)
 	    _("Rivendell"), wxICON_ERROR|wxOK);
         return false;
     }
-    mysql_real_escape_string(mDb, 
-        Client, 
-        WX2UNI(hold_Client),
-        strlen(WX2UNI(hold_Client)));
+	strcpy(Client, WX2UNI(hold_Client));
+
     return true;
 }
 
@@ -1267,10 +791,8 @@ bool RivendellDialog::Chk_Agency( char * Agency)
 	    _("Rivendell"), wxICON_ERROR|wxOK);
 	return false;
     }
-    mysql_real_escape_string(mDb, 
-        Agency, 
-        WX2UNI(hold_Agency),
-        strlen(WX2UNI(hold_Agency)));
+	strcpy(Agency, WX2UNI(hold_Agency));
+
     return true;
 }
 
@@ -1283,50 +805,9 @@ bool RivendellDialog::Chk_Description( char * Description)
             _("Rivendell"), wxICON_ERROR|wxOK);
         return false;
     }
-    mysql_real_escape_string(mDb, 
-        Description, 
-        WX2UNI(hold_Description),
-        strlen(WX2UNI(hold_Description)));
+	strcpy(Description, WX2UNI(hold_Description));
+
     return true;
-}
-
-bool RivendellDialog::Get_Rivendell_1_Parameters(int * format,
-	int * channels,
-	int * samplerate)
-{
-	char str[255];
-	char *endPtr;
-	
-	if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultFormat", str))
-	{
-		wxMessageBox(_("Unable to find DefaultFormat in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
-		return false;
-	}
-	else
-	{
-		*format = strtol(str, &endPtr, 10);
-	}
-
-	if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultChannels", str))
-	{
-		wxMessageBox(_("Unable to find DefaultChannels in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
-		return false;
-	}
-	else
-	{
-		*channels = strtol(str, &endPtr, 10);
-	}
-
-	if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultSampRate", str))
-	{
-		wxMessageBox(_("Unable to find DefaultSampRate in rd configuration"), _("Rivendell"), wxICON_ERROR | wxOK);
-		return false;
-	}
-	else
-	{
-		*samplerate = strtol(str, &endPtr, 10);
-	}
-	return true;
 }
 
 bool RivendellDialog::Get_Rivendell_2_Parameters(int * format,
@@ -1338,9 +819,14 @@ bool RivendellDialog::Get_Rivendell_2_Parameters(int * format,
 	char str[255];
 	char *endPtr;
 	int webResult;
-	int result;
 	unsigned numrecs = 0;
 	struct rd_system_settings *system_settings = 0;
+
+	// Set RDACITY_VERSION STRING
+	char RDACITY_VERSION_STRING[255] = RDACITY_VERSION;
+	//Add Rivendell C Library Info
+	strcat(RDACITY_VERSION_STRING, RD_GetUserAgent());
+	strcat(RDACITY_VERSION_STRING, RD_GetVersion());
 
 	if (!RivendellCfg->ParseString("DefaultContentParameters", "DefaultFormat", str))
 	{
@@ -1367,6 +853,7 @@ bool RivendellDialog::Get_Rivendell_2_Parameters(int * format,
 		"",
 		"",
 		ticket,
+		RDACITY_VERSION_STRING,
 		&numrecs);
 	if (webResult < 0)
 	{
@@ -1399,7 +886,7 @@ bool RivendellDialog::Get_Rivendell_2_Parameters(int * format,
 	return true;
 }
 
-void RivendellDialog::Process_Riv_2(wxString groupString)
+void RivendellDialog::Process_Riv_Export(wxString groupString)
 {
 
     double length = 0.0;    //Figure out the length below;
@@ -1424,10 +911,24 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
 	wxString msg;
     char rivTicket[41]="";
     char rivPass[33] = "";
-
+		
+	// Set RDACITY_VERSION STRING
+	char RDACITY_VERSION_STRING[255] = RDACITY_VERSION;
+	//Add Rivendell C Library Info
+	strcat(RDACITY_VERSION_STRING, RD_GetUserAgent());
+	strcat(RDACITY_VERSION_STRING, RD_GetVersion());
 
     AudacityProject *p = GetActiveProject();
- 
+
+	// Date checking (Start and End).
+	/* FIXME: add checking for sane date values and possibly "TOD" "TFN"
+	since right now only proper formatting is checked*/
+	wxString sDate;
+	wxString eDate;
+	if (!Check_Start_End_Date(&sDate, &eDate))
+		return;
+
+
     // Calculate cart number for content.
     if (((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->GetValue().IsEmpty() ||
         !((wxTextCtrl*)FindWindow(wxID_CARTNUMBER))->GetValue().ToULong(&cartNewNumber))
@@ -1447,6 +948,7 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
         }
 	    #endif
     }
+
 
     if (!RivendellCfg->ParseString("RivendellWebHost", "Rivhost", rivHost))
     {
@@ -1567,7 +1069,12 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
     
     if (!Chk_Description(&rd_description[0]))
         return;
-    
+
+	// Set Year
+	wxString year;
+	year = ((wxTextCtrl*)FindWindow(wxID_YEAR))->GetValue();
+	int rd_year = wxAtoi(year);
+
 	// Start Progress Bar In Another Thread
     MyProgressThread* myprogressthread = new MyProgressThread();
 	
@@ -1586,7 +1093,8 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
 		groupString.c_str(),  
 		rd_title,
 		fName,
-        	&numrecs);
+		RDACITY_VERSION_STRING,
+		&numrecs);
 
 	// Kill the progress Thread
 	myprogressthread->Delete();
@@ -1645,6 +1153,8 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
     strcpy( edit_cart.cart_client, rd_client);
     edit_cart.use_cart_agency = 1;
     strcpy( edit_cart.cart_agency, rd_agency);
+	edit_cart.use_cart_year = 1;
+	edit_cart.cart_year = rd_year;
 	result= RD_EditCart(&carts,
         edit_cart,
         rivHost,
@@ -1652,6 +1162,7 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
         rivPass,
 	    rivTicket,
         cartNewNumber,
+		RDACITY_VERSION_STRING,
         &numrecs);
 	if ((result< 200 || result > 299) &&
         (result != 0))
@@ -1678,7 +1189,16 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
     memset(&edit_cut,0,sizeof(struct edit_cut_values));
     edit_cut.use_cut_description=1;
     strcpy(edit_cut.cut_description,rd_description);
-    
+	edit_cut.use_cut_start_datetime = 1;
+	edit_cut.cut_start_datetime.tm_year = (wxAtoi(sDate.Mid(1, 4)) - 1900);
+	edit_cut.cut_start_datetime.tm_mon = (wxAtoi(sDate.Mid(6, 2)) - 1);
+	edit_cut.cut_start_datetime.tm_mday = wxAtoi(sDate.Mid(9, 2));
+	edit_cut.use_cut_end_datetime = 1;
+	edit_cut.cut_end_datetime.tm_year = (wxAtoi(eDate.Mid(1, 4)) - 1900);
+	edit_cut.cut_end_datetime.tm_mon = (wxAtoi(eDate.Mid(6, 2)) - 1);
+	edit_cut.cut_end_datetime.tm_mday = wxAtoi(eDate.Mid(9, 2));
+
+
     result= RD_EditCut(&cuts,
         edit_cut,
         rivHost,
@@ -1687,6 +1207,7 @@ void RivendellDialog::Process_Riv_2(wxString groupString)
 	    rivTicket,
         cartNewNumber,
         cutNewNumber,
+		RDACITY_VERSION_STRING,
         &numrecs);
 	if ((result< 200 || result > 299) &&
         (result != 0))
@@ -1805,15 +1326,13 @@ bool RivendellDialog::Check_Start_End_Date( wxString * sdate, wxString * edate)
         errorflag = false;
         *sdate = ((wxTextCtrl*)FindWindow(wxID_STARTDATE))->GetValue();
         if (sdate->length() == 8) { 		
-            datetmp.ParseFormat(*sdate, _T("%m/%d/%y"));
-            if (!datetmp.IsValid()) {
-                errorflag = true;	
-            }
+			if (!datetmp.ParseFormat(*sdate, _T("%m/%d/%y"))) {
+				errorflag = true;
+			}
         } else if (sdate->length() == 10) {
-            datetmp.ParseFormat(*sdate, _T("%m/%d/%Y"));
-			if (!datetmp.IsValid()) {
-                errorflag = true;	
-            }
+			if (!datetmp.ParseFormat(*sdate, _T("%m/%d/%Y"))) {
+				errorflag = true;
+			}
         } else {
             errorflag = true;
 		}
@@ -1829,16 +1348,14 @@ bool RivendellDialog::Check_Start_End_Date( wxString * sdate, wxString * edate)
         errorflag = false;
         *edate = ((wxTextCtrl*)FindWindow(wxID_ENDDATE))->GetValue();
         if (edate->length() == 8) { 		
-            datetmp2.ParseFormat(*edate, _T("%m/%d/%y"));
-			if (!datetmp2.IsValid()) {
-                errorflag = true;	
-            }
+			if (!datetmp2.ParseFormat(*edate, _T("%m/%d/%y"))) {
+				errorflag = true;
+			}
         } else if (edate->length() == 10) {
-            datetmp2.ParseFormat(*edate, _T("%m/%d/%Y"));
-			if (!datetmp2.IsValid()) {
-                errorflag = true;	
-            }
-        } else {
+			if (!datetmp2.ParseFormat(*edate, _T("%m/%d/%Y"))) {
+				errorflag = true;
+			}
+		} else {
             errorflag = true;
         }
 
@@ -1857,26 +1374,6 @@ bool RivendellDialog::Check_Start_End_Date( wxString * sdate, wxString * edate)
     }
     return true;
 } 
-void RivendellDialog::Set_Year(wxString * year)
-{
-    wxDateTime datetmp = wxDateTime::Now(); // temporary variable to check date.
-
-    // Verify valid format for year.
-    datetmp.SetMonth(wxDateTime::Jan);
-    datetmp.SetDay(01);
-    *year = ((wxTextCtrl*)FindWindow(wxID_YEAR))->GetValue();
-    if (year->IsEmpty())
-    {
-	*year = _T("NULL");
-    } 
-    else 
-    {
-	datetmp.ParseFormat(*year, _T("%Y"));
-	*year = datetmp.Format(_T("\"%Y-%m-%d\""));
-    }
-
-    return;
-}
 
 bool RivendellDialog::Verify_Update( unsigned long  cartnum, unsigned long * cutnum,
 		const char host[], const char user[],
@@ -1889,13 +1386,19 @@ bool RivendellDialog::Verify_Update( unsigned long  cartnum, unsigned long * cut
 
    wxString msg;
 
-   
+   // Set RDACITY_VERSION STRING
+   char RDACITY_VERSION_STRING[255] = RDACITY_VERSION;
+   //Add Rivendell C Library Info
+   strcat(RDACITY_VERSION_STRING, RD_GetUserAgent());
+   strcat(RDACITY_VERSION_STRING, RD_GetVersion());
+
     int result = RD_ListCart( &cart,
 	host,
 	user,
 	rivpass,
 	rivticket,
 	cartnum,
+	RDACITY_VERSION_STRING,
 	&numrecs);
     if (result == 0)
     {
@@ -1906,6 +1409,7 @@ bool RivendellDialog::Verify_Update( unsigned long  cartnum, unsigned long * cut
 	    rivticket,
 	    cartnum,
 	    *cutnum,
+		RDACITY_VERSION_STRING,
 	    &numrecs);
         if (result2 == 0)    //WE Verify the update
         {
@@ -1926,6 +1430,7 @@ bool RivendellDialog::Verify_Update( unsigned long  cartnum, unsigned long * cut
                     rivpass,
 	            rivticket,
                     cartnum,
+					RDACITY_VERSION_STRING,
                     &numrecs);
 	        if (result2 < 0)
 		{

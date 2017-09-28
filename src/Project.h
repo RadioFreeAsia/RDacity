@@ -41,11 +41,7 @@
 #include <wx/intl.h>
 #include <wx/dcclient.h>
 
-#ifdef _WIN32
 #include <mysql.h>
-#else
-#include <mysql/mysql.h>
-#endif
 
 const int AudacityProjectTimerID = 5200;
 

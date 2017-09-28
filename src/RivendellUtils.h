@@ -27,6 +27,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA
 #ifndef RIVENDELLUTILSH
 #define RIVENDELLUTILSH
 
+#define RDACITY_VERSION "rdacity/2.1.2.20 (Windows-7) "
+
 class RivendellUtils
 {
 

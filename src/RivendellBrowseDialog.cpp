@@ -68,7 +68,7 @@ IMPLEMENT_CLASS(RivendellBrowseDialog, wxDialog)
 
 
 RivendellBrowseDialog::RivendellBrowseDialog(wxWindow * parent, MYSQL *db)
-:  wxDialog(parent, -1, _("Rivendell Browse, User: ") + riv_getuser(db),
+:  wxDialog(parent, -1, _("Rivendell Browse, User: ") + riv_getuser(),
          wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxWANTS_CHARS | wxRESIZE_BORDER)
 {
    mLastSearchIdx = 0;
@@ -103,7 +103,7 @@ RivendellBrowseDialog::RivendellBrowseDialog(wxWindow * parent, MYSQL *db)
    item2->Add( item9, 0, wxALIGN_CENTER|wxALL, 5 );
 
    query.Printf(_("select GROUP_NAME from USER_PERMS where USER_NAME = '%s' ORDER BY GROUP_NAME "), 
-                riv_getuser(mDb).c_str() );
+                riv_getuser().c_str() );
    // FIXME: should sterilize contents of riv_getusr() before sending to sql.
    mysql_query(mDb, query.mb_str());
    result = mysql_store_result(mDb);
@@ -230,7 +230,7 @@ void RivendellBrowseDialog::GetRivendellData()
    }
    else {
       query.Printf(_("select GROUP_NAME from USER_PERMS where USER_NAME = \"%s\" ORDER BY GROUP_NAME "),
-            riv_getuser(mDb).c_str() );
+            riv_getuser().c_str() );
       mysql_query(mDb, query.mb_str());
       result = mysql_store_result(mDb);
       i = 0;

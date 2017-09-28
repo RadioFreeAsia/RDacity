@@ -78,7 +78,7 @@ extern	RivendellConfig	*RivendellCfg;
  *
  * @return wxString with username.  Defaults to "user" on error.
  */
-wxString riv_getuser(MYSQL *db);
+wxString riv_getuser();
 
 
 #endif

@@ -48,7 +48,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA
 #include "RivendellUtils.h"
 #include "RivendellLoginDialog.h"
 #include "rivendell/rd_audiostore.h"
-
+#include "rivendell/rd_getversion.h"
+#include "rivendell/rd_getuseragent.h"
 
 RivendellUtils *RivUtils;
 
@@ -95,11 +96,18 @@ bool RivendellUtils::Validate_Ticket(const char rivhost[],
 	struct rd_audiostore *audiosto;
 	unsigned numrecs;
 
+	// Set RDACITY_VERSION STRING
+	char RDACITY_VERSION_STRING[255] = RDACITY_VERSION;
+	//Add Rivendell C Library Info
+	strcat(RDACITY_VERSION_STRING, RD_GetUserAgent());
+	strcat(RDACITY_VERSION_STRING, RD_GetVersion());
+
 	result = RD_AudioStore(&audiosto,
 		rivhost,
 		user,
 		pass,
 		chk_ticket,
+		RDACITY_VERSION_STRING,
 		&numrecs);
 	if (result < 0) {
 		wxMessageBox(_("Failure - Major Error during Web Call! Result Code < 0"),
